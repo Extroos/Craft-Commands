@@ -2,7 +2,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 
-const DATA_DIR = path.join(__dirname, '../../data');
+const DATA_DIR = path.join(process.cwd(), 'data');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
 
 export interface SystemSettings {
@@ -59,7 +59,8 @@ class SystemSettingsService {
                         hostMode: true, // Default to Host Mode for now
                         remoteAccess: { enabled: false },
                         https: { enabled: false, keyPath: '', certPath: '' },
-                        dockerEnabled: false
+                        dockerEnabled: false,
+                        storageProvider: 'json'
                     }
                 };
                 fs.writeJSONSync(SETTINGS_FILE, defaultSettings, { spaces: 4 });
@@ -70,6 +71,7 @@ class SystemSettingsService {
             if (loaded.app) {
                 if (loaded.app.hostMode === undefined) loaded.app.hostMode = true;
                 if (loaded.app.dockerEnabled === undefined) loaded.app.dockerEnabled = false;
+                if (loaded.app.storageProvider === undefined) loaded.app.storageProvider = 'json';
             }
             return loaded;
         } catch (e) {

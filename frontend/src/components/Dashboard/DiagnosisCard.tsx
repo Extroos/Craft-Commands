@@ -1,7 +1,6 @@
 
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { AlertTriangle, Stethoscope, Wrench, CheckCircle } from 'lucide-react';
+import { Stethoscope, Wrench, CheckCircle, Zap } from 'lucide-react';
 import { API } from '../../services/api';
 
 interface DiagnosisResult {
@@ -14,6 +13,7 @@ interface DiagnosisResult {
     action?: {
         type: string;
         payload: any;
+        autoHeal?: boolean;
     };
     timestamp: number;
 }
@@ -35,105 +35,121 @@ export const DiagnosisCard: React.FC<DiagnosisCardProps> = ({ result, serverId, 
         if (!result.action) return;
         setFixing(true);
         try {
-            // In Phase 4, we might just simulate or support specific actions
-            // Ideally backend would have a /fix endpoint, but for now we might map actions to API calls
             if (result.action.type === 'UPDATE_CONFIG') {
                 await API.updateServer(serverId, result.action.payload);
             } else if (result.action.type === 'SWITCH_JAVA') {
                  await API.updateServer(serverId, { javaVersion: result.action.payload.version });
             } else if (result.action.type === 'AGREE_EULA') {
-                 // Write eula=true to eula.txt
                  await API.saveFileContent(serverId, 'eula.txt', 'eula=true');
             }
 
             setFixed(true);
             setTimeout(() => {
                 onFix();
-            }, 1500);
+            }, 1000);
         } catch (e) {
             console.error('Fix failed', e);
             setFixing(false);
         }
     };
 
-    return (
-        <AnimatePresence>
-            <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="bg-gradient-to-r from-red-900/40 to-orange-900/40 border border-red-500/30 rounded-xl p-6 mb-6 backdrop-blur-sm shadow-lg overflow-hidden relative"
-            >
-                {/* Background Decor */}
-                <div className="absolute -top-10 -right-10 w-32 h-32 bg-red-500/10 rounded-full blur-3xl"></div>
+    const severityColor = result.severity === 'CRITICAL' ? 'border-rose-500' : 'border-amber-500';
+    const severityBg = result.severity === 'CRITICAL' ? 'bg-rose-500/5' : 'bg-amber-500/5';
+    const severityText = result.severity === 'CRITICAL' ? 'text-rose-500' : 'text-amber-500';
 
-                <div className="flex items-start gap-5">
-                    <div className="p-3 bg-red-500/20 rounded-lg text-red-400">
-                        <Stethoscope size={32} />
+    return (
+        <div className={`bg-card border-y border-r ${severityColor} border-l-4 rounded-r-lg p-6 mb-8 shadow-sm relative transition-all`}>
+            <div className="flex items-start gap-6">
+                <div className={`p-3 ${severityBg} ${severityText} rounded border ${severityColor}/20`}>
+                    <Stethoscope size={24} />
+                </div>
+
+                <div className="flex-1">
+                    <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-3">
+                            <span className={`text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded border ${severityColor}/30 ${severityBg} ${severityText}`}>
+                                {result.severity} DIAGNOSIS
+                            </span>
+                            <span className="text-[10px] font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded tracking-tight">
+                                ID: {result.ruleId?.toUpperCase()}
+                            </span>
+                        </div>
+                        
+                        {result.action?.autoHeal && (
+                            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold rounded border border-emerald-500/20 uppercase tracking-tighter">
+                                <Zap size={10} className="fill-emerald-500" />
+                                Proactive Auto-Healing Available
+                            </div>
+                        )}
                     </div>
 
-                    <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
-                            <span className="px-2 py-0.5 rounded text-xs font-bold tracking-wider bg-red-500/20 text-red-300 border border-red-500/20 uppercase">
-                                Diagnosis: {result.severity}
-                            </span>
-                            <span className="text-sm text-red-200/60 font-mono">CODE: {result.ruleId?.toUpperCase() || 'UNKNOWN'}</span>
+                    <h3 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2">
+                         {result.title}
+                    </h3>
+                    
+                    <div className="space-y-4">
+                        <div className="text-sm text-muted-foreground leading-relaxed max-w-2xl">
+                            <span className="text-foreground font-semibold">Incident:</span> {result.explanation}
                         </div>
-
-                        <h3 className="text-xl font-bold text-white mb-2">{result.title}</h3>
                         
-                        <div className="text-gray-300 space-y-4">
-                            <p className="leading-relaxed">
-                                <span className="text-red-300 font-semibold">Problem: </span> 
-                                {result.explanation}
-                            </p>
-                            
-                            <div className="bg-black/30 rounded-lg p-3 border border-white/5">
-                                <p className="text-emerald-300 flex items-start gap-2">
-                                    <span className="font-semibold shrink-0">℞ Remedy:</span> 
-                                    {result.recommendation}
-                                </p>
+                        <div className="bg-muted/40 rounded border border-border/50 p-4">
+                            <div className="flex items-start gap-3">
+                                <Wrench size={16} className="text-primary mt-0.5 shrink-0" />
+                                <div>
+                                    <h4 className="text-[11px] font-bold text-primary uppercase tracking-wider mb-1">Recommended Action</h4>
+                                    <p className="text-sm text-foreground/90 font-medium">
+                                        {result.recommendation}
+                                    </p>
+                                </div>
                             </div>
                         </div>
+                    </div>
 
-                        <div className="mt-6 flex items-center gap-3">
+                    <div className="mt-8 flex items-center justify-between">
+                        <div className="flex items-center gap-3">
                             {result.action && !fixed && (
                                 <button 
                                     onClick={handleAutoFix}
                                     disabled={fixing}
-                                    className="flex items-center gap-2 px-4 py-2 bg-white text-black rounded-lg font-bold hover:bg-gray-200 transition-colors disabled:opacity-50"
+                                    className="flex items-center gap-2 px-5 py-2 bg-primary text-primary-foreground rounded text-xs font-bold hover:opacity-90 transition-opacity disabled:opacity-50 shadow-sm"
                                 >
                                     {fixing ? (
                                         <>
-                                            <div className="w-4 h-4 border-2 border-black/30 border-t-black rounded-full animate-spin"></div>
-                                            Applying Fix...
+                                            <div className="w-3.5 h-3.5 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin"></div>
+                                            Executing Protocol...
                                         </>
                                     ) : (
                                         <>
-                                            <Wrench size={18} />
-                                            Auto-Fix Issue
+                                            <CheckCircle size={14} />
+                                            Apply Automatic Fix
                                         </>
                                     )}
                                 </button>
                             )}
 
                             {fixed && (
-                                <div className="flex items-center gap-2 px-4 py-2 bg-emerald-500/20 text-emerald-400 rounded-lg font-bold border border-emerald-500/30">
-                                    <CheckCircle size={18} />
-                                    Issue Resolved
+                                <div className="flex items-center gap-2 px-5 py-2 bg-emerald-600 text-white rounded text-xs font-bold shadow-sm">
+                                    <CheckCircle size={14} />
+                                    Resolved
                                 </div>
                             )}
 
-                            <button 
-                                onClick={onDismiss}
-                                className="px-4 py-2 text-gray-400 hover:text-white transition-colors"
-                            >
-                                Dismiss
-                            </button>
+                            {!fixing && (
+                                <button 
+                                    onClick={onDismiss}
+                                    className="px-4 py-2 text-xs font-bold text-muted-foreground hover:text-foreground transition-colors uppercase tracking-widest"
+                                >
+                                    Ignore
+                                </button>
+                            )}
+                        </div>
+                        
+                        <div className="text-[9px] font-medium text-muted-foreground/40 uppercase tracking-widest">
+                            Management Terminal // {new Date(result.timestamp).toLocaleTimeString()}
                         </div>
                     </div>
                 </div>
-            </motion.div>
-        </AnimatePresence>
+            </div>
+        </div>
     );
 };

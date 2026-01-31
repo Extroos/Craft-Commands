@@ -23,9 +23,9 @@ Security is taken seriously in Craft Commands. If you discover a security vulner
 3. I'll do my best to respond as quickly as possible and work on a fix.
 4. Once patched, you'll be publicly credited for the discovery (unless you prefer to remain anonymous).
 
-## Security Architecture (v1.7.0 Stable)
+## Security Architecture (v1.7.1 Stable)
 
-Craft Commands v1.7.0 introduces several critical security hardening measures:
+Craft Commands v1.7.1 introduces several critical security hardening measures:
 
 - **Granular Permissions & Overrides**: A 3-state permission engine (Inherited, Allow, Deny) with explicit server-level and global system-wide overrides.
 - **Hardened Hierarchical Guards**: Strict enforcement of role hierarchy (Owner > Admin > Manager > Viewer) that prevents staff from elevating their own or others' rights beyond their assigned scope.

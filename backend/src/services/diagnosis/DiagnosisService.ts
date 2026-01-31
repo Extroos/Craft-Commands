@@ -18,8 +18,9 @@ export interface DiagnosisResult {
     explanation: string;
     recommendation: string;
     action?: {
-        type: 'UPDATE_CONFIG' | 'SWITCH_JAVA' | 'AGREE_EULA' | 'INSTALL_DEPENDENCY';
+        type: 'UPDATE_CONFIG' | 'SWITCH_JAVA' | 'AGREE_EULA' | 'INSTALL_DEPENDENCY' | 'REPAIR_PROPERTIES' | 'CLEANUP_TELEMETRY' | 'OPTIMIZE_ARGUMENTS';
         payload: any;
+        autoHeal?: boolean; // If true, AutoHealingService can execute this automatically
     };
     timestamp: number;
 }
@@ -32,6 +33,9 @@ export interface DiagnosisRule {
     triggers: RegExp[]; 
     // The core logic
     analyze: (server: ServerConfig, logs: string[], env: SystemStats) => Promise<DiagnosisResult | null>;
+    
+    // Proactive properties
+    isHealable?: boolean;
 }
 
 export class DiagnosisService {

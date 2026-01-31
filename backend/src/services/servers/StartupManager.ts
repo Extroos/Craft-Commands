@@ -11,6 +11,7 @@ import util from 'util';
 const execAsync = util.promisify(exec);
 
 import { safetyService } from '../system/SafetyService';
+import { systemSettingsService } from '../system/SystemSettingsService';
 
 export class StartupManager {
 
@@ -53,7 +54,15 @@ export class StartupManager {
         // Enforce Properties for Backend Servers (Trust No One)
         await this.enforceBackendProperties(server);
 
-        const { cmd, cwd, env } = await this.buildStartCommand(server, javaPath, server.executionEngine || 'native');
+        // GLOBAL DOCKER ENFORCEMENT
+        const settings = systemSettingsService.getSettings();
+        let engine = server.executionEngine || 'native';
+        if (engine === 'docker' && !settings.app.dockerEnabled) {
+            console.warn(`[StartupManager:${id}] Docker is disabled globally. Overriding execution engine to 'native' for safety.`);
+            engine = 'native';
+        }
+
+        const { cmd, cwd, env } = await this.buildStartCommand(server, javaPath, engine);
         
         // 5. Launch
         let dockerImage = server.dockerImage;
@@ -80,7 +89,7 @@ export class StartupManager {
 
         processManager.startServer(id, cmd, cwd, { 
             ...env, 
-            executionEngine: server.executionEngine,
+            executionEngine: engine,
             dockerImage,
             SERVER_PORT: server.port
         });
@@ -106,7 +115,7 @@ export class StartupManager {
         return 'eclipse-temurin:21-jre';
     }
 
-    private async checkPort(port: number): Promise<boolean> {
+    public async checkPort(port: number): Promise<boolean> {
         return new Promise((resolve) => {
             const socket = new net.Socket();
             socket.setTimeout(200);

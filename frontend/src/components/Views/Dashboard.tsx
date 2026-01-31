@@ -159,7 +159,7 @@ const Dashboard: React.FC<DashboardProps> = ({ serverId }) => {
     const stats = allStats[serverId] || { cpu: 0, memory: 0, uptime: 0, latency: 0, players: 0, playerList: [], isRealOnline: false, tps: "0.00", pid: 0 };
 
     const status = server.status;
-    const isOnline = status === ServerStatus.ONLINE;
+    const isOnline = status === ServerStatus.ONLINE || status === ServerStatus.STARTING;
 
     // SMOOTH UPTIME INTERPOLATION
     const [displayUptime, setDisplayUptime] = useState(stats.uptime);
@@ -197,11 +197,32 @@ const Dashboard: React.FC<DashboardProps> = ({ serverId }) => {
         }
     }, [server, servers]);
 
+    // Debug logging for telemetry
+    useEffect(() => {
+        if (stats.cpu > 0 || stats.memory > 0) {
+            console.log(`[Dashboard:${serverId}] Telemetry Update:`, {
+                cpu: stats.cpu,
+                memory: stats.memory,
+                status: server.status,
+                pid: stats.pid
+            });
+        }
+    }, [stats.cpu, stats.memory, server.status]);
+
     // Update History when global stats change
     useEffect(() => {
         if (stats.cpu !== undefined) {
-             setCpuHistory(prev => [...prev.slice(1), stats.cpu]);
-             setMemHistory(prev => [...prev.slice(1), stats.memory]);
+             setCpuHistory(prev => {
+                const last = prev[prev.length - 1];
+                // Only update if value changed or it's the first non-zero update
+                if (stats.cpu === 0 && last === 0 && prev.some(v => v > 0)) return prev;
+                return [...prev.slice(1), stats.cpu];
+             });
+             setMemHistory(prev => {
+                const last = prev[prev.length - 1];
+                if (stats.memory === 0 && last === 0 && prev.some(v => v > 0)) return prev;
+                return [...prev.slice(1), stats.memory];
+             });
         }
     }, [stats.cpu, stats.memory]);
 
@@ -292,7 +313,7 @@ const Dashboard: React.FC<DashboardProps> = ({ serverId }) => {
     );
 
     // Calculations
-    const ramMax = server.ram * 1024;
+    const ramMax = (server.ram || 1) * 1024;
     const tps = stats.tps; 
     
     // Status Color Logic

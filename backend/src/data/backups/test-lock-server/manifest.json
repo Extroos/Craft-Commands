@@ -1,0 +1,12 @@
+{
+  "backups": [
+    {
+      "id": "backup-1769819561787",
+      "serverId": "test-lock-server",
+      "filename": "backup-1769819561787.zip",
+      "size": 150,
+      "createdAt": "2026-01-31T00:32:41.787Z",
+      "description": "Lock Test"
+    }
+  ]
+}

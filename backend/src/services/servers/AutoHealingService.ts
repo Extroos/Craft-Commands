@@ -1,6 +1,7 @@
 import { processManager } from './ProcessManager';
 import { logger } from '../../utils/logger';
 import { diagnosisService } from '../diagnosis/DiagnosisService';
+import { autoHealingManager } from '../diagnosis/AutoHealingManager';
 import net from 'net';
 
 class AutoHealingService {
@@ -119,15 +120,23 @@ class AutoHealingService {
             const stats = { totalMemory: 0, freeMemory: 0, javaVersion: 'unknown' }; 
             const diagnosis = await diagnosisService.diagnose(require('./ServerService').getServer(serverId), logs, stats);
             
-            const fatalError = diagnosis.find(d => 
-                d.severity === 'CRITICAL' && 
-                ['eula_check', 'missing_jar', 'port_binding', 'java_version', 'bad_config'].includes(d.ruleId)
-            );
+            const healableAction = diagnosis.find(d => d.action?.autoHeal);
 
-            if (fatalError) {
-                logger.error(`[AutoHealing:${serverId}] Recovery ABORTED: ${fatalError.title}. Manual fix required.`);
-                processManager.updateCachedStatus(serverId, { status: 'CRASHED', online: false });
-                return;
+            if (healableAction && healableAction.action) {
+                logger.info(`[AutoHealing:${serverId}] Proactive Stabilization: ${healableAction.title}. Applying fix...`);
+                await this.applyHealAction(healableAction.action);
+                // After healing, we continue to startup
+            } else {
+                const fatalError = diagnosis.find(d => 
+                    d.severity === 'CRITICAL' && 
+                    ['eula_check', 'missing_jar', 'port_binding', 'java_version', 'bad_config'].includes(d.ruleId)
+                );
+
+                if (fatalError) {
+                    logger.error(`[AutoHealing:${serverId}] Recovery ABORTED: ${fatalError.title}. Manual fix required.`);
+                    processManager.updateCachedStatus(serverId, { status: 'CRASHED', online: false });
+                    return;
+                }
             }
         } catch (diagError) {
             logger.warn(`[AutoHealing:${serverId}] Diagnosis failed to run, proceeding with cautious recovery.`);
@@ -150,6 +159,13 @@ class AutoHealingService {
 
         } catch (e: any) {
             logger.error(`[AutoHealing:${serverId}] Recovery failed: ${e.message}`);
+        }
+    }
+    private async applyHealAction(action: any) {
+        try {
+            await autoHealingManager.executeFix(action.payload.serverId, action.type, action.payload);
+        } catch (error: any) {
+            logger.error(`[AutoHealing] Execution failed: ${error.message}`);
         }
     }
 }

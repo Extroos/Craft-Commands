@@ -69,23 +69,83 @@ export class NativeRunner extends EventEmitter implements IServerRunner {
         }
     }
 
+    private static sharedSnapshot: any = null;
+    private static lastScanTime: number = 0;
+    private static isScanning: boolean = false;
+
+    private async getSystemSnapshot() {
+        const now = Date.now();
+        // Cache snapshot for 2.5 seconds to cover the 3s loop without overlaps
+        if (NativeRunner.sharedSnapshot && (now - NativeRunner.lastScanTime < 2500)) {
+            return NativeRunner.sharedSnapshot;
+        }
+
+        // Prevent concurrent identical scans
+        if (NativeRunner.isScanning) {
+            while (NativeRunner.isScanning) {
+                await new Promise(r => setTimeout(r, 100));
+            }
+            return NativeRunner.sharedSnapshot;
+        }
+
+        NativeRunner.isScanning = true;
+        try {
+            NativeRunner.sharedSnapshot = await si.processes();
+            NativeRunner.lastScanTime = Date.now();
+        } finally {
+            NativeRunner.isScanning = false;
+        }
+        return NativeRunner.sharedSnapshot;
+    }
+
     async getStats(id: string): Promise<RunnerStats> {
         const child = this.processes.get(id);
-        if (!child) return { cpu: 0, memory: 0 };
+        if (!child || !child.pid) return { cpu: 0, memory: 0 };
 
         try {
-            // This is a simplified version of the stats logic from ProcessManager
-            // We'll refine this later to make it more robust (like finding PID by port)
-            const pid = child.pid;
-            if (!pid) return { cpu: 0, memory: 0 };
+            const shellPid = child.pid;
+            const procs = await this.getSystemSnapshot();
+            
+            // 1. Recursive lookup for all descendants
+            const descendants: any[] = [];
+            const queue = [shellPid];
+            const seen = new Set<number>([shellPid]);
 
-            const procs = await si.processes();
-            const target = procs.list.find(p => p.pid === pid);
+            while (queue.length > 0) {
+                const parentId = queue.shift()!;
+                const children = procs.list.filter((p: any) => p.parentPid === parentId);
+                for (const c of children) {
+                    if (!seen.has(c.pid)) {
+                        seen.add(c.pid);
+                        descendants.push(c);
+                        queue.push(c.pid);
+                    }
+                }
+            }
+            
+            // 2. Identify the workload process (Heuristic)
+            let target = procs.list.find((p: any) => p.pid === shellPid);
+            
+            if (descendants.length > 0) {
+                // Priority A: The descendant that looks like a Java process (Minecraft)
+                const javaProc = descendants.find(p => 
+                    p.command.toLowerCase().includes('java') || 
+                    p.name.toLowerCase().includes('java') ||
+                    (p.params && p.params.toLowerCase().includes('java'))
+                );
+                
+                if (javaProc) {
+                    target = javaProc;
+                } else {
+                    // Priority B: The one using the most RAM (usually the server)
+                    target = descendants.sort((a, b) => b.memRss - a.memRss)[0];
+                }
+            }
 
             if (target) {
                 return {
                     cpu: target.cpu,
-                    memory: target.memRss / 1024,
+                    memory: target.memRss / 1024, // KB -> MB (memRss is KB on Win/Linux)
                     pid: target.pid,
                     commandLine: `${target.command} ${target.params}`.trim()
                 };

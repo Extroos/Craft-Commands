@@ -1,6 +1,6 @@
 
 import React, { useEffect, useState } from 'react';
-import { Plus, Server, Hash, Cpu, ArrowRight, HardDrive, LogOut, Trash2, AlertTriangle, Stethoscope } from 'lucide-react';
+import { Plus, Server, Hash, Cpu, ArrowRight, HardDrive, LogOut, Trash2, AlertTriangle, Stethoscope, Zap } from 'lucide-react';
 import { ServerConfig, ServerStatus } from '@shared/types';
 
 import { API } from '../../services/api';
@@ -203,7 +203,7 @@ const ServerSelection: React.FC<ServerSelectionProps> = ({
                                         </div>
                                     
                                     {server.status === ServerStatus.ONLINE && (
-                                        <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-background animate-pulse bg-emerald-500"></div>
+                                        <div className="absolute -top-1 -right-1 w-3 h-3 rounded-full border-2 border-background bg-emerald-500"></div>
                                     )}
                                 </div>
 
@@ -233,11 +233,13 @@ const ServerSelection: React.FC<ServerSelectionProps> = ({
                                         </div>
                                     </div>
 
-                                    {/* Diagnosis Alert */}
+                                    {/* Diagnosis Alert - Stabilized Technical Badge */}
                                     {server.status === 'CRASHED' && (
-                                        <div className="flex items-center gap-2 text-rose-500 bg-rose-500/10 px-3 py-1.5 rounded-md border border-rose-500/20 animate-pulse">
-                                            <Stethoscope size={14} />
-                                            <span className="text-xs font-bold uppercase tracking-wider">Diagnosis Needed</span>
+                                        <div className="flex items-center gap-2 px-2 py-1 bg-rose-500/5 text-rose-500 border border-rose-500/20 rounded text-[9px] font-black uppercase tracking-[.15em]">
+                                            <Stethoscope size={11} />
+                                            <span>Analysis Required</span>
+                                            <div className="w-px h-2.5 bg-rose-500/20 mx-0.5"></div>
+                                            <Zap size={10} className="fill-rose-500" />
                                         </div>
                                     )}
 

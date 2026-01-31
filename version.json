@@ -1,5 +1,5 @@
 {
-  "version": "1.7.0",
+  "version": "1.7.1",
   "title": "Craft Commands",
   "notes": [
     "Granular Permissions: 3-state control (Inherited, Grant, Deny) with explicit overrides",

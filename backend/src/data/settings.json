@@ -1,0 +1,19 @@
+{
+    "discordBot": {
+        "enabled": false,
+        "token": "",
+        "clientId": "",
+        "guildId": "",
+        "commandRoles": [],
+        "notificationChannel": ""
+    },
+    "app": {
+        "theme": "dark",
+        "autoUpdate": true,
+        "hostMode": true,
+        "remoteAccess": {
+            "enabled": false
+        },
+        "dockerEnabled": false
+    }
+}

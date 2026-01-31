@@ -14,6 +14,7 @@ export const EulaRule: DiagnosisRule = {
         /You need to agree to the EULA/i,
         /eula.txt/i
     ],
+    isHealable: true,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats): Promise<DiagnosisResult | null> => {
         const hasLog = logs.some(l => l.includes('agree to the EULA'));
         
@@ -30,7 +31,8 @@ export const EulaRule: DiagnosisRule = {
                 recommendation: 'You must agree to the Minecraft EULA to run this server.',
                 action: {
                     type: 'AGREE_EULA',
-                    payload: { serverId: server.id }
+                    payload: { serverId: server.id },
+                    autoHeal: true
                 },
                 timestamp: Date.now()
             };
@@ -48,6 +50,7 @@ export const PortConflictRule: DiagnosisRule = {
         /Address already in use/i,
         /BindException/i
     ],
+    isHealable: true,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats): Promise<DiagnosisResult | null> => {
         // Universal Check: Logs OR Direct Network check
         const hasError = logs.some(l => /FAILED TO BIND|Address already in use|BindException/i.test(l));
@@ -69,7 +72,8 @@ export const PortConflictRule: DiagnosisRule = {
                 recommendation: 'Change the server port in Settings or stop the other application using this port.',
                 action: {
                     type: 'UPDATE_CONFIG',
-                    payload: { serverId: server.id, key: 'port-auto-fix' } // Placeholder for frontend auto-fix
+                    payload: { serverId: server.id, action: 'RESOLVE_PORT_CONFLICT' },
+                    autoHeal: true
                 },
                 timestamp: Date.now()
             };
@@ -88,6 +92,7 @@ export const JavaVersionRule: DiagnosisRule = {
         /Java 17 is required/i,
         /Java 21 is required/i
     ],
+    isHealable: true,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats): Promise<DiagnosisResult | null> => {
         const hasError = logs.some(l => /UnsupportedClassVersionError/i.test(l) || /compiled by a more recent version/i.test(l));
         if (!hasError) return null;
@@ -114,7 +119,8 @@ export const JavaVersionRule: DiagnosisRule = {
             recommendation: `Switch the server's Java Version to ${requiredJava} in the settings tab.`,
             action: {
                 type: 'SWITCH_JAVA',
-                payload: { serverId: server.id, version: requiredJava }
+                payload: { serverId: server.id, version: requiredJava },
+                autoHeal: true
             },
             timestamp: Date.now()
         };
@@ -129,6 +135,7 @@ export const MemoryRule: DiagnosisRule = {
         /OutOfMemoryError/i,
         /Java heap space/i
     ],
+    isHealable: true,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats): Promise<DiagnosisResult | null> => {
          const hasError = logs.some(l => /OutOfMemoryError/i.test(l) || /Java heap space/i.test(l));
          if (!hasError) return null;
@@ -145,7 +152,8 @@ export const MemoryRule: DiagnosisRule = {
             recommendation: recommendation,
             action: {
                 type: 'UPDATE_CONFIG',
-                payload: { serverId: server.id, ram: currentRam + 1 }
+                payload: { serverId: server.id, ram: currentRam + 1 },
+                autoHeal: true
             },
             timestamp: Date.now()
          };
@@ -196,6 +204,7 @@ export const BadConfigRule: DiagnosisRule = {
         /Failed to load properties/i,
         /Exception handling console input/i // Sometimes happens when properties fail
     ],
+    isHealable: true,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats): Promise<DiagnosisResult | null> => {
         if (logs.some(l => /Failed to load properties/i.test(l))) {
              return {
@@ -205,6 +214,11 @@ export const BadConfigRule: DiagnosisRule = {
                 title: 'Corrupted Configuration',
                 explanation: 'The server.properties file is malformed or corrupted.',
                 recommendation: 'Delete server.properties to let the server regenerate it, or fix the syntax errors.',
+                action: {
+                    type: 'REPAIR_PROPERTIES',
+                    payload: { serverId: server.id },
+                    autoHeal: true
+                },
                 timestamp: Date.now()
             };
         }
@@ -417,11 +431,8 @@ export const AikarsFlagsRule: DiagnosisRule = {
     name: 'Missing Performance Flags',
     description: 'Recommends Aikars Flags for servers with sufficient RAM',
     triggers: [], // Run always (or conditionally on startup)
+    isHealable: true,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats): Promise<DiagnosisResult | null> => {
-        // Only valid if server is ONLINE or logs indicate recent start? 
-        // Actually diagnosis is usually run when things go wrong OR manually.
-        // It's a TIP.
-        
         if (server.ram >= 4 && !server.advancedFlags?.aikarFlags) {
             return {
                 id: `aikar-tip-${server.id}-${Date.now()}`,
@@ -431,8 +442,40 @@ export const AikarsFlagsRule: DiagnosisRule = {
                 explanation: `Your server has ${server.ram}GB RAM but isn't using Aikar's Flags. These start-up flags can significantly reduce lag spikes.`,
                 recommendation: 'Go to Settings > Advanced and enable "Aikar\'s Flags".',
                 action: {
-                    type: 'UPDATE_CONFIG',
-                    payload: { serverId: server.id, key: 'enable_aikars_flags' } // Placeholder
+                    type: 'OPTIMIZE_ARGUMENTS',
+                    payload: { serverId: server.id, optimized: true },
+                    autoHeal: true
+                },
+                timestamp: Date.now()
+            };
+        }
+        return null;
+    }
+};
+
+export const TelemetryRule: DiagnosisRule = {
+    id: 'telemetry_cleanup',
+    name: 'Massive Telemetry Logs',
+    description: 'Detects if log files are becoming too large',
+    triggers: [
+        /Stopping!/i,
+        /Saving chunks/i
+    ],
+    isHealable: true,
+    analyze: async (server: ServerConfig, logs: string[], env: SystemStats): Promise<DiagnosisResult | null> => {
+        // Triggered by specific log patterns that imply a long session or frequent restarts
+        if (logs.length > 500) {
+            return {
+                id: `telemetry-${server.id}-${Date.now()}`,
+                ruleId: 'telemetry_cleanup',
+                severity: 'INFO',
+                title: 'Log Management Needed',
+                explanation: 'The server has generated a large amount of telemetry data in this session.',
+                recommendation: 'Cleanup log files and temporary locks to ensure smooth startup next time.',
+                action: {
+                    type: 'CLEANUP_TELEMETRY',
+                    payload: { serverId: server.id },
+                    autoHeal: true
                 },
                 timestamp: Date.now()
             };
@@ -497,6 +540,6 @@ export const CoreRules = [
     EulaRule, PortConflictRule, JavaVersionRule, MemoryRule, 
     MissingJarRule, BadConfigRule, PermissionRule, InvalidIpRule,
     DependencyMissingRule, DuplicateModRule, MixinConflictRule, TickingEntityRule,
-    WatchdogRule, WorldCorruptionRule, AikarsFlagsRule, NetworkOfflineRule,
+    WatchdogRule, WorldCorruptionRule, AikarsFlagsRule, TelemetryRule, NetworkOfflineRule,
     ConfigSyncRule
 ];

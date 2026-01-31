@@ -2,11 +2,15 @@ import { spawn, exec } from 'child_process';
 import { EventEmitter } from 'events';
 import { IServerRunner, RunnerStats } from './IServerRunner';
 import util from 'util';
+import os from 'os';
 
 const execAsync = util.promisify(exec);
 
 export class DockerRunner extends EventEmitter implements IServerRunner {
     private containers: Map<string, string> = new Map(); // serverId -> containerName/Id
+    private cpuHistory: Map<string, number> = new Map(); // serverId -> lastCpuValue
+    private readonly CPU_CORES = os.cpus().length;
+    private readonly SMOOTHING_FACTOR = 0.3; // EMA factor (lower = smoother)
 
     async start(id: string, runCommand: string, cwd: string, env: NodeJS.ProcessEnv): Promise<void> {
         const containerName = `craftcommand-server-${id}`;
@@ -60,6 +64,7 @@ export class DockerRunner extends EventEmitter implements IServerRunner {
 
         child.on('close', (code) => {
             this.containers.delete(id);
+            this.cpuHistory.delete(id);
             this.emit('close', { id, code });
         });
     }
@@ -107,13 +112,36 @@ export class DockerRunner extends EventEmitter implements IServerRunner {
         try {
             const { stdout } = await execAsync(`docker stats ${containerName} --no-stream --format "{{.CPUPerc}},{{.MemUsage}}"`);
             const [cpu, mem] = stdout.split(',');
-            // Parse "0.50%" or "1.2GB / 4GB"
-            const cpuVal = parseFloat(cpu.replace('%', ''));
-            const memVal = parseFloat(mem.split('/')[0].trim()); // Just take the used MB/GB
+            
+            // 1. Parse CPU (e.g., "0.50%")
+            let cpuVal = parseFloat(cpu.replace('%', ''));
+
+            // 2. Normalize CPU by core count (docker stats returns sum of all cores)
+            // This brings 500% down to ~41% on 12 cores.
+            cpuVal = cpuVal / this.CPU_CORES;
+
+            // 3. Apply Smoothing (Exponential Moving Average)
+            const lastCpu = this.cpuHistory.get(id) || cpuVal;
+            const smoothedCpu = (cpuVal * this.SMOOTHING_FACTOR) + (lastCpu * (1 - this.SMOOTHING_FACTOR));
+            this.cpuHistory.set(id, smoothedCpu);
+
+            // 4. Parse Memory Usage (e.g., "1.2MiB / 4GiB")
+            const memPart = mem.split('/')[0].trim().toLowerCase();
+            let memVal = parseFloat(memPart);
+            
+            if (memPart.includes('g')) { // Handles GiB, GB, g
+                memVal *= 1024;
+            } else if (memPart.includes('k')) { // Handles KiB, kB, k
+                memVal /= 1024;
+            } else if (memPart.includes('b') && !memPart.includes('m')) {
+                // Raw bytes (B), not MB or MiB
+                memVal /= (1024 * 1024);
+            }
+            // Default is MiB/MB
 
             return {
-                cpu: cpuVal,
-                memory: memVal, // This might need more robust parsing (MB vs GB)
+                cpu: parseFloat(smoothedCpu.toFixed(2)),
+                memory: memVal,
                 containerId: containerName
             };
         } catch (e) {

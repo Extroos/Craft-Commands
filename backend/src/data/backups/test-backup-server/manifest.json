@@ -1,0 +1,84 @@
+{
+  "backups": [
+    {
+      "id": "backup-1769819457556",
+      "serverId": "test-backup-server",
+      "filename": "backup-1769819457556.zip",
+      "size": 509,
+      "createdAt": "2026-01-31T00:30:57.556Z",
+      "description": "Cleanup Test 1"
+    },
+    {
+      "id": "backup-1769819457571",
+      "serverId": "test-backup-server",
+      "filename": "backup-1769819457571.zip",
+      "size": 509,
+      "createdAt": "2026-01-31T00:30:57.571Z",
+      "description": "Cleanup Test 2"
+    },
+    {
+      "id": "backup-1769819457576",
+      "serverId": "test-backup-server",
+      "filename": "backup-1769819457576.zip",
+      "size": 509,
+      "createdAt": "2026-01-31T00:30:57.576Z",
+      "description": "Cleanup Test 3"
+    },
+    {
+      "id": "backup-1769819457581",
+      "serverId": "test-backup-server",
+      "filename": "backup-1769819457581.zip",
+      "size": 509,
+      "createdAt": "2026-01-31T00:30:57.581Z",
+      "description": "Cleanup Test 4"
+    },
+    {
+      "id": "backup-1769819457585",
+      "serverId": "test-backup-server",
+      "filename": "backup-1769819457585.zip",
+      "size": 509,
+      "createdAt": "2026-01-31T00:30:57.585Z",
+      "description": "Cleanup Test 5"
+    },
+    {
+      "id": "backup-1769819457588",
+      "serverId": "test-backup-server",
+      "filename": "backup-1769819457588.zip",
+      "size": 509,
+      "createdAt": "2026-01-31T00:30:57.588Z",
+      "description": "Cleanup Test 6"
+    },
+    {
+      "id": "backup-1769819457601",
+      "serverId": "test-backup-server",
+      "filename": "backup-1769819457601.zip",
+      "size": 509,
+      "createdAt": "2026-01-31T00:30:57.601Z",
+      "description": "Cleanup Test 7"
+    },
+    {
+      "id": "backup-1769819457617",
+      "serverId": "test-backup-server",
+      "filename": "backup-1769819457617.zip",
+      "size": 509,
+      "createdAt": "2026-01-31T00:30:57.617Z",
+      "description": "Cleanup Test 8"
+    },
+    {
+      "id": "backup-1769819457632",
+      "serverId": "test-backup-server",
+      "filename": "backup-1769819457632.zip",
+      "size": 509,
+      "createdAt": "2026-01-31T00:30:57.632Z",
+      "description": "Cleanup Test 9"
+    },
+    {
+      "id": "backup-1769819457637",
+      "serverId": "test-backup-server",
+      "filename": "backup-1769819457637.zip",
+      "size": 509,
+      "createdAt": "2026-01-31T00:30:57.637Z",
+      "description": "Cleanup Test 10"
+    }
+  ]
+}

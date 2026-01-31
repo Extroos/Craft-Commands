@@ -2,6 +2,21 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.7.1] - 2026-01-31 - Patch & Stabilization
+
+### Added
+
+- **Docker CPU Stabilization**: Normalized CPU reporting across multi-core systems and implemented Exponential Moving Average (EMA) smoothing to dampen startup spikes.
+- **Global Docker Enforcement**: Hardened the backend to respect global Docker settings, ensuring individual server configurations cannot bypass the intentional disablement of the Docker engine.
+
+### Changed
+
+- **Version Synchronize**: Project-wide version bump to 1.7.1 for all subsystems and launcher.
+
+### Fixed
+
+- **Docker Default State**: Ensured new installations default to 'OFF' to prevent startup issues on systems without an active Docker daemon.
+
 ## [1.7.0] - 2026-01-31 - Granular Permissions & Global Overrides Stable
 
 ### Added

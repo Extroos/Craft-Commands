@@ -1,10 +1,22 @@
 <div align="center">
 
+<<<<<<< HEAD
 # Craft Commands
+=======
+<<<<<<< HEAD
+
+# Craft-Commands
+
+=======
+
+# Craft Commands
+
+> > > > > > > 58b27fd (chore: Sync project updates, documentation, and metadata)
+>>>>>>> 670123c (feat: stabilize diagnosis UI and implement advanced backend auto-healing)
 
 **Professional Minecraft server management platform focused on local-first and team hosting.**
 
-![version](https://img.shields.io/badge/version-v1.7.0--stable-emerald)
+![version](https://img.shields.io/badge/version-v1.7.1--stable-emerald)
 ![platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)
 ![license](https://img.shields.io/badge/license-MIT-blue.svg)
 

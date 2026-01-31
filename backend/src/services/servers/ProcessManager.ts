@@ -22,19 +22,34 @@ class ProcessManager extends EventEmitter {
 
     private startStatsLoop() {
         setInterval(async () => {
-            for (const [id, runner] of this.activeRunners.entries()) {
-                const stats = await runner.getStats(id);
-                const tps = this.getTPS(id);
-                const uptime = this.getUptime(id);
-                
-                this.emit('stats', { id, ...stats, tps, uptime });
-                this.updateCachedStatus(id, { 
-                    cpu: stats.cpu,
-                    memory: stats.memory,
-                    uptime,
-                    tps
-                });
-            }
+            const tasks = Array.from(this.activeRunners.entries()).map(async ([id, runner]) => {
+                try {
+                    const stats = await runner.getStats(id);
+                    const tps = this.getTPS(id);
+                    const uptime = this.getUptime(id);
+                    
+                    if (stats.cpu > 0 || stats.memory > 0) {
+                        console.log(`[ProcessManager:${id}] Stats: CPU ${stats.cpu}%, Memory ${stats.memory}MB, PID ${stats.pid}`);
+                    } else {
+                        // Log every 10th failure to avoid spam
+                        if (Math.random() < 0.1) {
+                            console.warn(`[ProcessManager:${id}] Stats report zero. Runner: ${runner.constructor.name}`);
+                        }
+                    }
+
+                    this.emit('stats', { id, ...stats, tps, uptime });
+                    this.updateCachedStatus(id, { 
+                        cpu: stats.cpu,
+                        memory: stats.memory,
+                        uptime,
+                        tps
+                    });
+                } catch (e) {
+                    console.error(`[ProcessManager] Stats failed for ${id}:`, e);
+                }
+            });
+
+            await Promise.all(tasks);
         }, 3000);
     }
 
