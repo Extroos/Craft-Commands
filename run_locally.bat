@@ -24,6 +24,7 @@ set "CE_CYAN=powershell -NoProfile -Command Write-Host -ForegroundColor Cyan"
 set "CE_MAGENTA=powershell -NoProfile -Command Write-Host -ForegroundColor Magenta"
 set "CE_WHITE=powershell -NoProfile -Command Write-Host -ForegroundColor White"
 set "CE_GRAY=powershell -NoProfile -Command Write-Host -ForegroundColor Gray"
+set "CE_PROMPT=powershell -NoProfile -Command Write-Host -NoNewline -ForegroundColor Cyan"
 
 :MENU
 cls
@@ -41,10 +42,7 @@ echo.
 %CE_CYAN% "  ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::"
 echo.
 echo.
-%CE_GRAY% "  [STATUS] "
-%CE_GREEN% "PRO PLATFORM ACTIVE "
-%CE_WHITE% " "
-%CE_GRAY% " [STABLE] "
+%CE_GRAY% -NoNewline "  [STATUS] "; %CE_GREEN% -NoNewline "PRO PLATFORM ACTIVE "; %CE_GRAY% "[STABLE]"
 echo.
 echo.
 echo    [1]  Launch Protocol (Start Server)
@@ -54,7 +52,7 @@ echo    [4]  Remote Bridge (Wizard)
 echo    [5]  Panic Control (Reset Network)
 echo    [6]  Terminate Session (Exit)
 echo.
-%CE_CYAN% "  > Select Command: "
+%CE_PROMPT% "  > Select Command: "
 set /p choice=""
 
 if "%choice%"=="1" goto START
@@ -94,7 +92,7 @@ echo    [5]  Decommission Tunnel Bridge (Disable Remote)
 echo.
 echo    [6]  Abort Bridge (Go Back)
 echo.
-%CE_CYAN% "  > Select Method: "
+%CE_PROMPT% "  > Select Method: "
 set /p r_choice=""
 
 if "%r_choice%"=="1" (
@@ -212,10 +210,6 @@ if "%MISSING_DEPS%"=="1" (
     echo.
 )
 
-echo.
-%CE_CYAN% "----------------------------------------------------"
-echo.
-%CE_WHITE% "  Protocol Status:  "
 set "B_TYPE=STABLE"
 tasklist /fi "imagename eq caddy.exe" 2>nul | findstr /i "caddy.exe" >nul
 if !errorlevel! equ 0 set "B_TYPE=SECURE (Caddy)"
@@ -223,7 +217,11 @@ tasklist /fi "imagename eq playit.exe" 2>nul | findstr /i "playit.exe" >nul
 if !errorlevel! equ 0 set "B_TYPE=TUNNEL (Playit)"
 tasklist /fi "imagename eq cloudflared.exe" 2>nul | findstr /i "cloudflared.exe" >nul
 if !errorlevel! equ 0 set "B_TYPE=SHARE (Cloudflare)"
-%CE_GREEN% "!B_TYPE!"
+
+echo.
+%CE_CYAN% "----------------------------------------------------"
+echo.
+%CE_WHITE% -NoNewline "  Protocol Status:  "; %CE_GREEN% "!B_TYPE!"
 echo.
 set "ACC_URL=http://localhost:3000"
 if exist "backend\data\settings.json" (
@@ -234,8 +232,7 @@ if exist "backend\data\settings.json" (
         if not "!DOM_VAL!"=="" set "ACC_URL=https://!DOM_VAL!"
     )
 )
-%CE_WHITE% "  Access Point:     "
-%CE_CYAN% "!ACC_URL!"
+%CE_WHITE% -NoNewline "  Access Point:     "; %CE_CYAN% "!ACC_URL!"
 echo.
 %CE_CYAN% "----------------------------------------------------"
 echo.
@@ -266,7 +263,8 @@ echo.
 %CE_WHITE% "This will flush and reinstall core system files."
 echo           Your server data is protected and will NOT be touched.
 echo.
-set /p confirm=" Confirm Flush? (y/n): "
+%CE_PROMPT% " Confirm Flush? (y/n): "
+set /p confirm=""
 if not "%confirm%"=="y" goto MENU
 
 echo.
@@ -307,7 +305,7 @@ echo    [2]  Decommission HTTPS Bridge (Back to HTTP)
 echo    [3]  Manual PEM/CRT Binding (Internal)
 echo    [4]  Return to Protocol
 echo.
-%CE_CYAN% "  > Select Option: "
+%CE_PROMPT% "  > Select Option: "
 set /p choice=""
 
 if "%choice%"=="1" goto PROTOCOL_PROXY
@@ -333,7 +331,8 @@ echo.
 %CE_WHITE% "Enter the Domain or Hostname you want to use."
 %CE_GRAY% "Examples: 'craftcommands', 'myserver.com', 'localhost'"
 echo.
-set /p DOMAIN=" > Domain Name: "
+%CE_PROMPT% " > Domain Name: "
+set /p DOMAIN=""
 
 echo.
 %CE_YELLOW% "[1/3] "
@@ -366,9 +365,12 @@ echo.
 echo.
 %CE_WHITE% "Enter absolute paths to your certificate files."
 echo.
-set /p CERT_PATH=" > Path to Cert (.pem/.crt): "
-set /p KEY_PATH=" > Path to Private Key (.key): "
-set /p PASSPHRASE=" > Key Passphrase (optional): "
+%CE_PROMPT% " > Path to Cert (.pem/.crt): "
+set /p CERT_PATH=""
+%CE_PROMPT% " > Path to Private Key (.key): "
+set /p KEY_PATH=""
+%CE_PROMPT% " > Key Passphrase (optional): "
+set /p PASSPHRASE=""
 
 echo.
 %CE_YELLOW% "[Action] "

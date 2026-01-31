@@ -21,7 +21,7 @@ if (command === 'setup') {
     const caddyContent = `${domain} {
 ${tlsConfig}
     # Secure Proxy for Vite Dev Server & API
-    reverse_proxy localhost:3000 {
+    reverse_proxy 127.0.0.1:3000 {
         header_up Host {upstream_hostport}
         header_up X-Real-IP {remote_host}
     }
