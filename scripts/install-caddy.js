@@ -10,7 +10,6 @@ const __dirname = path.dirname(__filename);
 // Constants
 const PROXY_DIR = path.join(__dirname, '../proxy');
 const EXE_PATH = path.join(PROXY_DIR, 'caddy.exe');
-// Latest stable download for Windows amd64
 const DOWNLOAD_URL = "https://caddyserver.com/api/download?os=windows&arch=amd64"; 
 
 // Ensure Directory
@@ -18,38 +17,67 @@ if (!fs.existsSync(PROXY_DIR)) {
     fs.mkdirSync(PROXY_DIR, { recursive: true });
 }
 
-console.log('[HTTPS Setup] Verifying Caddy Binary...');
+async function downloadFile(url, targetPath) {
+    return new Promise((resolve, reject) => {
+        const file = fs.createWriteStream(targetPath);
+        
+        const request = https.get(url, (response) => {
+            if (response.statusCode === 301 || response.statusCode === 302) {
+                // Handle Redirects
+                file.close();
+                downloadFile(response.headers.location, targetPath).then(resolve).catch(reject);
+                return;
+            }
 
-if (fs.existsSync(EXE_PATH)) {
-    const stats = fs.statSync(EXE_PATH);
-    if (stats.size > 10000000) {
-        console.log('[Info] Caddy.exe is already provisioned.');
-        process.exit(0);
-    }
-    console.log('[Warning] Caddy.exe appears corrupt. Re-downloading...');
-    fs.unlinkSync(EXE_PATH);
+            if (response.statusCode !== 200) {
+                reject(new Error(`Download Failed. Status: ${response.statusCode}`));
+                return;
+            }
+
+            response.pipe(file);
+
+            file.on('finish', () => {
+                file.close();
+                resolve();
+            });
+        });
+
+        request.on('error', (err) => {
+            fs.unlink(targetPath, () => {});
+            reject(err);
+        });
+
+        request.setTimeout(30000, () => {
+            request.destroy();
+            reject(new Error('Download timed out after 30 seconds.'));
+        });
+    });
 }
 
-console.log(`[HTTPS Setup] Downloading Caddy Reverse Proxy...`);
-console.log(`[Target] ${EXE_PATH}`);
+async function main() {
+    console.log('[HTTPS Setup] Verifying Caddy Binary...');
 
-const file = fs.createWriteStream(EXE_PATH);
-
-https.get(DOWNLOAD_URL, (response) => {
-    if (response.statusCode !== 200) {
-        console.error(`[Error] Download Failed. Status: ${response.statusCode}`);
-        process.exit(1);
+    if (fs.existsSync(EXE_PATH)) {
+        const stats = fs.statSync(EXE_PATH);
+        if (stats.size > 10000000) {
+            console.log('[Info] Caddy.exe is already provisioned and healthy.');
+            process.exit(0);
+        }
+        console.log('[Warning] Caddy.exe appears corrupt or incomplete. Re-provisioning...');
+        fs.unlinkSync(EXE_PATH);
     }
 
-    response.pipe(file);
+    console.log(`[HTTPS Setup] Downloading Caddy Reverse Proxy (Zero-Config)...`);
+    console.log(`[Target] ${EXE_PATH}`);
 
-    file.on('finish', () => {
-        file.close();
+    try {
+        await downloadFile(DOWNLOAD_URL, EXE_PATH);
         console.log('[Success] Caddy Bridge provisioned successfully.');
         process.exit(0);
-    });
-}).on('error', (err) => {
-    fs.unlink(EXE_PATH, () => {});
-    console.error(`[Fatal] Network Error: ${err.message}`);
-    process.exit(1);
-});
+    } catch (err) {
+        console.error(`[Fatal] Bridge installation failed: ${err.message}`);
+        process.exit(1);
+    }
+}
+
+main();

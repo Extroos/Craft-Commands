@@ -216,7 +216,14 @@ echo.
 %CE_CYAN% "----------------------------------------------------"
 echo.
 %CE_WHITE% "  Protocol Status:  "
-%CE_GREEN% "STABLE"
+set "B_TYPE=STABLE"
+tasklist /fi "imagename eq caddy.exe" 2>nul | findstr /i "caddy.exe" >nul
+if !errorlevel! equ 0 set "B_TYPE=SECURE (Caddy)"
+tasklist /fi "imagename eq playit.exe" 2>nul | findstr /i "playit.exe" >nul
+if !errorlevel! equ 0 set "B_TYPE=TUNNEL (Playit)"
+tasklist /fi "imagename eq cloudflared.exe" 2>nul | findstr /i "cloudflared.exe" >nul
+if !errorlevel! equ 0 set "B_TYPE=SHARE (Cloudflare)"
+%CE_GREEN% "!B_TYPE!"
 echo.
 set "ACC_URL=http://localhost:3000"
 if exist "backend\data\settings.json" (
