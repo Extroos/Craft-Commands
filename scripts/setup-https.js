@@ -56,6 +56,7 @@ try {
     // Update HTTPS Config
     settings.app.https = {
         enabled: true,
+        mode: 'native',
         certPath: cleanCert,
         keyPath: cleanKey,
         passphrase: passphrase

@@ -6,6 +6,10 @@ All notable changes to this project will be documented in this file.
 
 ### Added
 
+- **Zero-Config HTTPS (Caddy)**: Fully automated browser secure-access. Automatically provisions the Caddy binary, generates a domain-specific Caddyfile, and manages the lifecycle with one-click setup/disable.
+- **Automated Remote Bridge (Playit.gg)**: Zero-config tunnel synchronization. Automatically downloads the Playit agent and provides dedicated decommissioning controls.
+- **Panic Control Routine**: Global network kill-switch that severs all external bridges (Caddy, Playit, Cloudflare) and reverts the system to safe local-only mode instantly.
+- **Dynamic Access Reporting**: The launcher and backend now intelligently report the active secure Access Point URL (e.g., https://craftcommands) based on current bridge status.
 - **Docker CPU Stabilization**: Normalized CPU reporting across multi-core systems and implemented Exponential Moving Average (EMA) smoothing to dampen startup spikes.
 - **Global Docker Enforcement**: Hardened the backend to respect global Docker settings, ensuring individual server configurations cannot bypass the intentional disablement of the Docker engine.
 

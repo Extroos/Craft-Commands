@@ -1,0 +1,15 @@
+localhost {
+    tls internal
+    # Secure Proxy for Vite Dev Server & API
+    reverse_proxy localhost:3000 {
+        header_up Host {upstream_hostport}
+        header_up X-Real-IP {remote_host}
+    }
+
+    # Security Headers
+    header {
+        Strict-Transport-Security "max-age=31536000;"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "DENY"
+    }
+}

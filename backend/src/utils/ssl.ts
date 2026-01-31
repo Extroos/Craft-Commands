@@ -38,7 +38,7 @@ export const sslUtils = {
         fs.ensureDirSync(SSL_DIR);
 
         const attrs = [{ name: 'commonName', value: 'craft-commands.local' }];
-        const pems = selfsigned.generate(attrs, { days: 365 });
+        const pems = selfsigned.generate(attrs, { days: 365, keySize: 2048 });
 
         fs.writeFileSync(certPath, pems.cert);
         fs.writeFileSync(keyPath, pems.private);

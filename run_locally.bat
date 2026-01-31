@@ -16,30 +16,46 @@ if not exist "frontend" (
     exit /b 1
 )
 
+:: Define Color Codes (PowerShell based)
+set "CE_RED=powershell -NoProfile -Command Write-Host -ForegroundColor Red"
+set "CE_GREEN=powershell -NoProfile -Command Write-Host -ForegroundColor Green"
+set "CE_YELLOW=powershell -NoProfile -Command Write-Host -ForegroundColor Yellow"
+set "CE_CYAN=powershell -NoProfile -Command Write-Host -ForegroundColor Cyan"
+set "CE_MAGENTA=powershell -NoProfile -Command Write-Host -ForegroundColor Magenta"
+set "CE_WHITE=powershell -NoProfile -Command Write-Host -ForegroundColor White"
+set "CE_GRAY=powershell -NoProfile -Command Write-Host -ForegroundColor Gray"
+
 :MENU
 cls
 echo.
-echo   ______            ______   ______                                          __
-echo  /      \          /      \ /      \                                        ^|  \
-echo ^|  $$$$$$\  ______ ^|  $$$$$$^|  $$$$$$\ ______  mmmmm  mmmmm   ______  _______  ^| $$
-echo ^| $$   \$$ /      \^| $$___\$^| $$   \$$/      \^|     \^|     \ ^|      \^|       \ ^| $$
-echo ^| $$      ^|  $$$$$$^| $$    \^| $$     ^|  $$$$$$^| $$$$$^| $$$$$\ \$$$$$$^| $$$$$$$\^| $$
-echo ^| $$   __ ^| $$   \$^| $$$$$$$^| $$   __^| $$  ^| $^| $$ ^| $$ ^| $$ /      $^| $$  ^| $$^| $$
-echo ^| $$__/  \^| $$     ^| $$     ^| $$__/  ^| $$__/ $^| $$ ^| $$ ^| $$^|  $$$$$$^| $$  ^| $$^| $$
-echo  \$$    $$^| $$     ^| $$      \$$    $$\$$    $$^| $$ ^| $$ ^| $$ \$$    $$^| $$  ^| $$^| $$
-echo   \$$$$$$  \$$      \$$       \$$$$$$  \$$$$$$  \$$  \$$  \$$  \$$$$$$$ \$$   \$$ \$$
+echo           ______            ______   ______                                          __
+echo          /      \          /      \ /      \                                        ^|  \
+echo         ^|  $$$$$$\  ______ ^|  $$$$$$^|  $$$$$$\ ______  mmmmm  mmmmm   ______  _______  ^| $$
+echo         ^| $$   \$$ /      \^| $$___\$^| $$   \$$/      \^|     \^|     \ ^|      \^|       \ ^| $$
+echo         ^| $$      ^|  $$$$$$^| $$    \^| $$     ^|  $$$$$$^| $$$$$^| $$$$$\ \$$$$$$^| $$$$$$$\^| $$
+echo         ^| $$   __ ^| $$   \$^| $$$$$$$^| $$   __^| $$  ^| $^| $$ ^| $$ ^| $$ /      $^| $$  ^| $$^| $$
+echo         ^| $$__/  \^| $$     ^| $$     ^| $$__/  ^| $$__/ $^| $$ ^| $$ ^| $$^|  $$$$$$^| $$  ^| $$^| $$
+echo          \$$    $$^| $$     ^| $$      \$$    $$\$$    $$^| $$ ^| $$ ^| $$ \$$    $$^| $$  ^| $$^| $$
+echo           \$$$$$$  \$$      \$$       \$$$$$$  \$$$$$$  \$$  \$$  \$$  \$$$$$$$ \$$   \$$ \$$
 echo.
-echo ====================================================================================
+%CE_CYAN% "  ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::"
 echo.
 echo.
-echo    [1] Start Server (Opens Dashboard)
-echo    [2] Reinstall (Fix Bugs/Issues)
-echo    [3] Setup HTTPS (Secure Remote Access)
-echo    [4] Setup Remote Access (Wizard)
-echo    [5] Emergency Disable (Reset to Localhost)
-echo    [6] Exit
+%CE_GRAY% "  [STATUS] "
+%CE_GREEN% "PRO PLATFORM ACTIVE "
+%CE_WHITE% " "
+%CE_GRAY% " [STABLE] "
 echo.
-set /p choice="Select Option: "
+echo.
+echo    [1]  Launch Protocol (Start Server)
+echo    [2]  Maintenance Mode (Fix/Reinstall)
+echo    [3]  Secure Direct Access (HTTPS Config)
+echo    [4]  Remote Bridge (Wizard)
+echo    [5]  Panic Control (Reset Network)
+echo    [6]  Terminate Session (Exit)
+echo.
+%CE_CYAN% "  > Select Command: "
+set /p choice=""
 
 if "%choice%"=="1" goto START
 if "%choice%"=="2" goto REINSTALL
@@ -55,27 +71,31 @@ goto START_LOGIC
 :REMOTE_SETUP
 cls
 echo.
-echo [Remote Access Configuration]
+%CE_CYAN% "[REMOTE BRIDGE CONFIGURATION]"
+echo.
 echo ====================================================================================
 echo.
-echo [Info] Choose how you want to connect remotely.
-echo        This will update your settings and start the server.
+%CE_GRAY% "  Choose your bridge method to synchronize with external networks."
 echo.
-echo    [1] Mesh VPN (Tailscale, ZeroTier) - [Recommended]
-echo        - Safest. Requires software on both PCs. No ports needed.
 echo.
-echo    [2] Reverse Proxy (Playit.gg) - [Built-in]
-echo        - Auto-configures a gamer tunnel for you.
+echo    [1]  Mesh VPN (Tailscale, ZeroTier) - [Recommended]
+echo         - Ultra-Secure. Access from anywhere.
 echo.
-echo    [3] Quick Website Share (Cloudflare) - [Web Only]
-echo        - Better, faster link for the Panel. NO Game Access.
+echo    [2]  Zero-Config Tunnel (Playit.gg) - [Automated]
+echo         - No port forwarding required. Auto-provisioned.
 echo.
-echo    [4] Direct Connection (Port Forwarding)
-echo        - Advanced. Requires Router config. Riskiest if not careful.
+echo    [3]  Web-Only Share (Cloudflare)
+echo         - Quick link for Dashboard ONLY.
 echo.
-echo    [5] Cancel (Go Back)
+echo    [4]  Direct Port Bind (Manual Forwarding)
+echo         - Advanced. Requires Router Access.
 echo.
-set /p r_choice="Select Method: "
+echo    [5]  Decommission Tunnel Bridge (Disable Remote)
+echo.
+echo    [6]  Abort Bridge (Go Back)
+echo.
+%CE_CYAN% "  > Select Method: "
+set /p r_choice=""
 
 if "%r_choice%"=="1" (
     call node scripts/cli-remote-setup.js vpn
@@ -84,18 +104,31 @@ if "%r_choice%"=="1" (
 if "%r_choice%"=="2" (
     call node scripts/cli-remote-setup.js proxy
     echo.
-    echo [Proxy Setup] Checking/Downloading Playit.gg Agent...
-    call node scripts/install-proxy.js
+    %CE_YELLOW% "[Setup] "
+    %CE_WHITE% "Synchronizing Virtual Bridge Agent..."
     echo.
-    echo [Proxy Setup] Launching Tunnel Agent...
-    start "Craft Commands Tunnel (Do Not Close)" "proxy\playit.exe"
+    call node scripts/install-proxy.js
+    if !errorlevel! neq 0 (
+        %CE_RED% "[Error] "
+        %CE_WHITE% "Bridge synchronization failed."
+        pause
+        goto REMOTE_SETUP
+    )
+    echo.
+    %CE_YELLOW% "[Action] "
+    %CE_WHITE% "Activating Tunnel Bridge..."
+    echo.
+    :: Kill any existing playit first
+    taskkill /f /im playit.exe >nul 2>nul
+    start "Craft Commands - Tunnel Bridge" "proxy\playit.exe" run
     goto POST_REMOTE_CONFIG
 )
 if "%r_choice%"=="3" (
     echo.
-    echo [Quick Share] Launching Cloudflare Tunnel...
-    echo [Quick Share] Check the new window for your link!
-    start "Cloudflare Website Share - Keep Open" node scripts/share-website.js
+    %CE_CYAN% "[Quick Share] "
+    %CE_WHITE% "Establishing Cloudflare Tunnel..."
+    echo.
+    start "Craft Commands - Web Share" node scripts/share-website.js
     timeout /t 3 >nul
     goto POST_REMOTE_CONFIG
 )
@@ -103,31 +136,52 @@ if "%r_choice%"=="4" (
     call node scripts/cli-remote-setup.js direct
     goto POST_REMOTE_CONFIG
 )
-goto MENU
+if "%r_choice%"=="5" (
+    cls
+    echo.
+    %CE_RED% "[DECOMMISSIONING TUNNEL BRIDGE]"
+    echo.
+    %CE_YELLOW% "[Action] "
+    %CE_WHITE% "Stopping Tunnel Process..."
+    taskkill /f /im playit.exe >nul 2>nul
+    
+    echo.
+    %CE_YELLOW% "[Action] "
+    %CE_WHITE% "Updating System Settings..."
+    call node scripts/cli-remote-setup.js disable
+    echo.
+    pause
+    goto MENU
+)
+if "%r_choice%"=="6" goto MENU
+goto REMOTE_SETUP
 
 :POST_REMOTE_CONFIG
 echo.
-echo [Action] Configuration Saved. Starting Server...
+%CE_GREEN% "[Success] "
+%CE_WHITE% "Configurations locked. Preparing launch..."
 timeout /t 3 >nul
-:: START_LOGIC label is assumed to exist from previous step, or we fall through to START_LOGIC
 goto START_LOGIC
 
 :START_LOGIC
 cls
-echo [System] Checking Environment...
+echo.
+%CE_CYAN% "  ::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::::"
+echo.
+echo.
+%CE_CYAN% "[SYSTEM] "
+%CE_WHITE% "Authenticating Environment..."
+echo.
+%CE_GREEN% "[Safe] "
+%CE_WHITE% "Protocols verified. Launching browser bridge..."
+echo.
+echo.
 
 :: Check Node
 where node >nul 2>nul
-if %errorlevel% neq 0 (
-    echo [Error] Node.js is not installed. Please install Node.js to continue.
-    pause
-    goto MENU
-)
-
-:: Check NPM
-where npm >nul 2>nul
-if %errorlevel% neq 0 (
-    echo [Error] NPM is not installed. Please reinstall Node.js.
+if !errorlevel! neq 0 (
+    %CE_RED% "[Error] "
+    %CE_WHITE% "Node.js is not installed. Please install Node.js (v18+) to continue."
     pause
     goto MENU
 )
@@ -139,61 +193,57 @@ if not exist "backend\node_modules" set MISSING_DEPS=1
 if not exist "frontend\node_modules" set MISSING_DEPS=1
 
 if "%MISSING_DEPS%"=="1" (
-    echo [Setup] First time setup detected. Installing files...
+    %CE_YELLOW% "[Setup] "
+    %CE_WHITE% "First time setup detected. Synchronizing modules..."
     echo.
     
-    echo [1/3] Installing Dashboard...
-    cd frontend
-    call npm install
-    if !errorlevel! neq 0 (
-        echo [Fatal] Failed to install Dashboard dependencies.
-        pause
-        cd ..
-        goto MENU
-    )
-    cd ..
+    %CE_GRAY% " [1/3] Refreshing Dashboard..."
+    cd frontend && call npm install >nul 2>nul && cd ..
+    
+    %CE_GRAY% " [2/3] Refreshing Backend Core..."
+    cd backend && call npm install >nul 2>nul && cd ..
+    
+    %CE_GRAY% " [3/3] Finalizing Root Integration..."
+    call npm install >nul 2>nul
+    
     echo.
-
-    echo [2/3] Installing Backend...
-    cd backend
-    call npm install
-    if !errorlevel! neq 0 (
-        echo [Fatal] Failed to install Backend dependencies.
-        pause
-        cd ..
-        goto MENU
-    )
-    cd ..
+    %CE_GREEN% "[Success] "
+    %CE_WHITE% "System fully synchronized."
     echo.
-
-    echo [3/3] Installing Root Tools...
-    call npm install
-    if !errorlevel! neq 0 (
-        echo [Fatal] Failed to install Root dependencies.
-        pause
-        goto MENU
-    )
-    echo.
-    echo [Success] Installation complete. Starting...
-) else (
-    echo [System] Files verified. Launching...
-    echo [Action] Opening Dashboard in your browser...
-    start http://localhost:3000
 )
 
 echo.
-echo ====================================================
-echo [Config Summary]
-echo * Panel URL: http://localhost:3000 (Unless HTTPS enabled)
-echo * Settings:  backend/data/settings.json
-echo * Servers:   backend/data/servers.json
-echo * Logs:      backend/data/audit.json
-echo ====================================================
-
+%CE_CYAN% "----------------------------------------------------"
 echo.
+%CE_WHITE% "  Protocol Status:  "
+%CE_GREEN% "STABLE"
+echo.
+set "ACC_URL=http://localhost:3000"
+if exist "backend\data\settings.json" (
+    set "DOM_VAL="
+    powershell -NoProfile -Command "$s = Get-Content 'backend\data\settings.json' -ErrorAction SilentlyContinue | ConvertFrom-Json; if ($s.app.https.enabled -eq $true -and $s.app.https.mode -eq 'bridge') { if ($s.app.https.domain) { Write-Output $s.app.https.domain } else { Write-Output 'localhost' } } else { exit 1 }" > "%TEMP%\cc_domain.txt" 2>nul
+    if !errorlevel! equ 0 (
+        set /p DOM_VAL= < "%TEMP%\cc_domain.txt"
+        if not "!DOM_VAL!"=="" set "ACC_URL=https://!DOM_VAL!"
+    )
+)
+%CE_WHITE% "  Access Point:     "
+%CE_CYAN% "!ACC_URL!"
+echo.
+%CE_CYAN% "----------------------------------------------------"
+echo.
+
+%CE_MAGENTA% "[Protocol] "
+%CE_WHITE% "Streaming logs below..."
+echo.
+echo.
+
 call npm run start:all
 if %errorlevel% neq 0 (
-    echo [Error] System crashed with code %errorlevel%.
+    echo.
+    %CE_RED% "[Critical] "
+    %CE_WHITE% "Process termination with error code: %errorlevel%"
+    echo.
     pause
 )
 goto MENU
@@ -201,87 +251,103 @@ goto MENU
 :REINSTALL
 cls
 echo.
-echo [Warning] This will completely reset the installation files.
-echo           Your servers/data will NOT be deleted.
+%CE_RED% " [MAINTENANCE MODE] "
 echo.
-set /p confirm="Continue? (y/n): "
+echo ====================================================================================
+echo.
+%CE_YELLOW% "  Notice: "
+%CE_WHITE% "This will flush and reinstall core system files."
+echo           Your server data is protected and will NOT be touched.
+echo.
+set /p confirm=" Confirm Flush? (y/n): "
 if not "%confirm%"=="y" goto MENU
 
 echo.
-echo [1/6] Cleaning Dashboard...
-if exist "frontend\node_modules" (
-    rmdir /s /q "frontend\node_modules"
-    if exist "frontend\node_modules" echo [Warn] Failed to delete frontend/node_modules. Files might be locked.
-)
-
-echo [2/6] Cleaning Backend...
-if exist "backend\node_modules" (
-    rmdir /s /q "backend\node_modules"
-)
-
-echo [3/6] Cleaning Root...
-if exist "node_modules" (
-    rmdir /s /q "node_modules"
-)
-
-echo [4/6] Reinstalling Dashboard...
-cd frontend
-call npm install
-cd ..
-
-echo [5/6] Reinstalling Backend...
-cd backend
-call npm install
-cd ..
-
-echo [6/6] Reinstalling Root...
-call npm install
+%CE_GRAY% " [1/3] Flushing Modules..."
+if exist "frontend\node_modules" rmdir /s /q "frontend\node_modules"
+if exist "backend\node_modules" rmdir /s /q "backend\node_modules"
+if exist "node_modules" rmdir /s /q "node_modules"
 
 echo.
+%CE_GRAY% " [2/3] Purging Build Caches..."
 echo.
-echo [Success] Reset complete.
+
 echo.
-set /p auto_start="Start Server now? (y/n): "
-if /i "%auto_start%"=="y" goto START
+%CE_GRAY% " [3/3] Triggering Deep Reinstall..."
+cd frontend && call npm install >nul 2>nul && cd ..
+cd backend && call npm install >nul 2>nul && cd ..
+call npm install >nul 2>nul
+
+echo.
+%CE_GREEN% "[Success] "
+%CE_WHITE% "System restored to factory-fresh logic."
+echo.
+pause
 goto MENU
 
 :HTTPS_MENU
 cls
 echo.
-echo [HTTPS Setup]
+%CE_MAGENTA% "[SECURE DIRECT ACCESS]"
+echo.
 echo ====================================================================================
 echo.
-echo [Warning] HTTPS encrypts traffic but implies remote access risks.
-echo           Do not expose this server to the internet without proper security.
-echo           See: docs/remote-access-plan.md
+%CE_YELLOW% "  Risk Warning: "
+%CE_WHITE% "HTTPS is mandatory for remote access."
 echo.
-echo    [1] Recommended: Reverse Proxy (Caddy/Nginx)
-echo    [2] Optional: Built-in HTTPS (Direct Bind)
-echo    [3] Back to Main Menu
+echo    [1]  Launch Automated Caddy Bridge - [Best Choice]
+echo    [2]  Decommission HTTPS Bridge (Back to HTTP)
+echo    [3]  Manual PEM/CRT Binding (Internal)
+echo    [4]  Return to Protocol
 echo.
-set /p choice="Select Option: "
+%CE_CYAN% "  > Select Option: "
+set /p choice=""
 
 if "%choice%"=="1" goto PROTOCOL_PROXY
-if "%choice%"=="2" goto PROTOCOL_DIRECT
-if "%choice%"=="3" goto MENU
+if "%choice%"=="2" (
+    echo.
+    %CE_YELLOW% "[Action] "
+    %CE_WHITE% "Deactivating HTTPS Bridge..."
+    call node scripts/manage-caddy.js disable
+    taskkill /f /im caddy.exe >nul 2>nul
+    echo.
+    pause
+    goto MENU
+)
+if "%choice%"=="3" goto PROTOCOL_DIRECT
+if "%choice%"=="4" goto MENU
 goto HTTPS_MENU
 
 :PROTOCOL_PROXY
 cls
 echo.
-echo [Reverse Proxy Setup]
+%CE_GREEN% "[Automated HTTPS Setup]"
 echo.
-echo [Action] Generating Caddyfile.example...
-if not exist "proxy" mkdir "proxy" 2>nul
-copy /y "proxy\Caddyfile.example" "Caddyfile.example" >nul 2>nul
-if %errorlevel% neq 0 (
-    echo [Error] Caddyfile.example template missing or write failed.
-) else (
-    echo [Success] 'Caddyfile.example' created in root directory.
-)
+%CE_WHITE% "Enter the Domain or Hostname you want to use."
+%CE_GRAY% "Examples: 'craftcommands', 'myserver.com', 'localhost'"
 echo.
-echo [Info] Please rename it to 'Caddyfile' and place it in your Caddy directory.
-echo [Info] For detailed instructions, read 'docs/https.md'.
+set /p DOMAIN=" > Domain Name: "
+
+echo.
+%CE_YELLOW% "[1/3] "
+%CE_WHITE% "Provisioning Caddy Reverse Proxy..."
+call node scripts/install-caddy.js
+
+echo.
+%CE_YELLOW% "[2/3] "
+%CE_WHITE% "Configuring Secure Bridge for !DOMAIN!..."
+call node scripts/manage-caddy.js setup !DOMAIN!
+
+echo.
+%CE_YELLOW% "[3/3] "
+%CE_WHITE% "Activating Bridge Tunnel..."
+:: Kill existing if any
+taskkill /f /im caddy.exe >nul 2>nul
+start "Craft Commands - HTTPS Bridge" proxy\caddy.exe run --config proxy\Caddyfile --adapter caddyfile
+
+echo.
+%CE_GREEN% "[Success] "
+%CE_WHITE% "HTTPS Bridge is now LIVE."
 echo.
 pause
 goto MENU
@@ -289,49 +355,43 @@ goto MENU
 :PROTOCOL_DIRECT
 cls
 echo.
-echo [Built-in HTTPS Setup]
+%CE_MAGENTA% "[Manual SSL Binding]"
 echo.
-echo [Warning] This requires valid SSL Certificate (.pem or .crt) and Key (.key) files.
-echo           Incorrect paths will cause the server to fallback to HTTP.
+%CE_WHITE% "Enter absolute paths to your certificate files."
 echo.
-set /p CERT_PATH="Enter Absolute Path to Certificate (.crt/.pem): "
-set /p KEY_PATH="Enter Absolute Path to Private Key (.key): "
-echo.
-echo (Optional) Enter Key Passphrase. Passphrases prevent auto-start without input.
-echo Leave empty if your key is not encrypted.
-set /p PASSPHRASE="Enter Key Passphrase (leave empty if none): "
-if "%PASSPHRASE%"=="" set PASSPHRASE=EMPTY
-
-if not exist "scripts\setup-https.js" (
-    echo [Fatal] Setup script is missing (scripts/setup-https.js).
-    pause
-    goto MENU
-)
+set /p CERT_PATH=" > Path to Cert (.pem/.crt): "
+set /p KEY_PATH=" > Path to Private Key (.key): "
+set /p PASSPHRASE=" > Key Passphrase (optional): "
 
 echo.
-echo [Action] Updating Configuration...
+%CE_YELLOW% "[Action] "
+%CE_WHITE% "Locking SSL configuration..."
 call node scripts/setup-https.js "!CERT_PATH!" "!KEY_PATH!" "!PASSPHRASE!"
 
 echo.
 pause
 goto MENU
 
-
-
 :REMOTE_DISABLE
 cls
 echo.
-echo [Emergency Disable]
+%CE_RED% " [PANIC CONTROL - NETWORK RESET] "
 echo.
-echo [Action] Disabling Remote Access and resetting bind to localhost...
-if not exist "scripts\emergency-disable-remote.js" (
-    echo [Fatal] Script missing: scripts\emergency-disable-remote.js
-    pause
-    goto MENU
-)
+echo ====================================================================================
+echo.
+%CE_YELLOW% "  Safety: "
+%CE_WHITE% "This will sever all external bridges and revert to Localhost."
+echo.
+
+%CE_GRAY% " [Action] Terminating Active Bridges..."
+:: Kill any active bridge processes
+taskkill /f /im caddy.exe >nul 2>nul
+taskkill /f /im playit.exe >nul 2>nul
+taskkill /f /im cloudflared.exe >nul 2>nul
 
 call node scripts/emergency-disable-remote.js
 echo.
-echo [Action] Restarting System to apply changes...
+%CE_GREEN% "[Success] "
+%CE_WHITE% "Isolation complete. Returning to safe mode..."
 timeout /t 3 >nul
-goto START
+goto MENU

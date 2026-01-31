@@ -11,6 +11,9 @@ export default defineConfig(({ mode }) => {
         port: parseInt(env.FRONTEND_PORT || env.PORT) || 3000,
         host: '0.0.0.0',
         allowedHosts: true, // Allow external tunnels (Cloudflare/Playit)
+        hmr: {
+            protocol: env.HTTPS === 'true' || fs.existsSync(path.resolve(__dirname, '../proxy/Caddyfile')) ? 'wss' : 'ws',
+        },
         proxy: {
             '/api': {
                 target: (() => {
@@ -18,7 +21,7 @@ export default defineConfig(({ mode }) => {
                         const settingsPath = path.resolve(__dirname, '../backend/data/settings.json');
                         if (fs.existsSync(settingsPath)) {
                             const settings = JSON.parse(fs.readFileSync(settingsPath, 'utf-8'));
-                            if (settings.app.https?.enabled) {
+                            if (settings.app.https?.enabled && settings.app.https.mode !== 'bridge') {
                                 return `https://127.0.0.1:${env.BACKEND_PORT || 3001}`;
                             }
                         }

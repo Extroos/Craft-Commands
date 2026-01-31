@@ -25,6 +25,8 @@ export interface SystemSettings {
         };
         https?: {
             enabled: boolean;
+            mode?: 'native' | 'bridge'; // native = backend handles SSL, bridge = external proxy (Caddy) handles it
+            domain?: string;
             keyPath: string;
             certPath: string;
             passphrase?: string;
@@ -72,6 +74,9 @@ class SystemSettingsService {
                 if (loaded.app.hostMode === undefined) loaded.app.hostMode = true;
                 if (loaded.app.dockerEnabled === undefined) loaded.app.dockerEnabled = false;
                 if (loaded.app.storageProvider === undefined) loaded.app.storageProvider = 'json';
+                if (loaded.app.https && loaded.app.https.enabled && !loaded.app.https.mode) {
+                    loaded.app.https.mode = 'native';
+                }
             }
             return loaded;
         } catch (e) {

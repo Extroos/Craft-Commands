@@ -28,7 +28,7 @@ let protocol = 'http';
 let sslStatus: 'VALID' | 'SELF_SIGNED' | 'NONE' = 'NONE';
 
 const initHttpServer = async () => {
-    if (settings.app.https?.enabled) {
+    if (settings.app.https?.enabled && settings.app.https.mode !== 'bridge') {
         try {
             const { certPath, keyPath, isSelfSigned } = await sslUtils.getOrCreateCertificates(
                 settings.app.https.certPath,
@@ -119,7 +119,12 @@ const startup = async () => {
         console.log('==================================================');
         console.log(` Mode:    ${method?.toUpperCase() || 'UNKNOWN'}`);
         if (method === 'vpn' || method === 'direct') {
-             console.log(` Connect: ${protocol}://${ip}:${PORT}`);
+             if (appSettings.https?.enabled && appSettings.https.mode === 'bridge' && appSettings.https.domain) {
+                console.log(` Connect: https://${appSettings.https.domain}`);
+                console.log(` (Internal: http://${ip}:${PORT})`);
+             } else {
+                console.log(` Connect: ${protocol}://${ip}:${PORT}`);
+             }
         } else if (method === 'proxy') {
              console.log(` Local:   ${protocol}://${ip}:${PORT}`);
              console.log(` Action:  Point your Proxy to Port ${PORT}`);

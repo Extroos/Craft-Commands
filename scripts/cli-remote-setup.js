@@ -29,7 +29,7 @@ function getLocalExternalIP() {
 }
 
 // --- Validation ---
-const VALID_METHODS = ['vpn', 'proxy', 'direct'];
+const VALID_METHODS = ['vpn', 'proxy', 'direct', 'disable'];
 if (!VALID_METHODS.includes(method)) {
     console.error(`[Error] Invalid method: ${method}`);
     console.log(`Allowed: ${VALID_METHODS.join(', ')}`);
@@ -64,10 +64,16 @@ try {
     }
 
     // 3. Update Settings
-    settings.app.remoteAccess = {
-        enabled: true,
-        method: method
-    };
+    if (method === 'disable') {
+        settings.app.remoteAccess = {
+            enabled: false
+        };
+    } else {
+        settings.app.remoteAccess = {
+            enabled: true,
+            method: method
+        };
+    }
 
     // 4. Write Back (Atomic)
     const tempPath = `${SETTINGS_PATH}.tmp`;
@@ -92,6 +98,10 @@ try {
         console.log(`Local IP: ${localIP}`);
         console.log('Action: Forward port 3000 (TCP) in your Router.');
         console.log('Warning: Ensure your firewall allows Node.js.');
+    } else if (method === 'disable') {
+        console.log('Method: Network Reset');
+        console.log('Status: Remote Access DEACTIVATED');
+        console.log('Action: System returning to Localhost visibility ONLY.');
     }
     console.log('------------------------------------------------\n');
 

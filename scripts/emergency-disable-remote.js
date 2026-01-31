@@ -20,9 +20,12 @@ try {
         if (settings.app.remoteAccess) {
             settings.app.remoteAccess.enabled = false;
             console.log('[Success] Remote Access flag set to FALSE.');
-        } else {
-            console.log('[Info] Remote Access was not enabled.');
         }
+
+        // Disable HTTPS Bridge
+        if (!settings.app.https) settings.app.https = {};
+        settings.app.https.enabled = false;
+        console.log('[Success] HTTPS Bridge flag set to FALSE.');
 
         // Force bind address reset via ensuring hostMode is safe? 
         // Actually, the Service reads the flag, so just setting false is enough.
