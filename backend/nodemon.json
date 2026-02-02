@@ -1,0 +1,9 @@
+{
+  "ignore": [
+    "data/*",
+    "minecraft_servers/*",
+    "temp_uploads/*"
+  ],
+  "ext": "ts,js,json",
+  "exec": "ts-node src/server.ts"
+}
