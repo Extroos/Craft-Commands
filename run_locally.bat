@@ -26,6 +26,47 @@ set "CE_WHITE=powershell -NoProfile -Command Write-Host -ForegroundColor White"
 set "CE_GRAY=powershell -NoProfile -Command Write-Host -ForegroundColor Gray"
 set "CE_PROMPT=powershell -NoProfile -Command Write-Host -NoNewline -ForegroundColor Cyan"
 
+:: -------------------------------------------------------------
+:: SMART UPDATE CHECK (v1.8.0+)
+:: -------------------------------------------------------------
+if exist "version.json" (
+    echo.
+    %CE_GRAY% -NoNewline "  [System] " & %CE_WHITE% -NoNewline "Checking for updates..."
+    
+    powershell -NoProfile -Command ^
+        "$wc = New-Object System.Net.WebClient; ^
+        $wc.Headers.Add('User-Agent', 'CraftCommands-Launcher'); ^
+        try { ^
+            $remoteJson = $wc.DownloadString('https://raw.githubusercontent.com/Extroos/Craft-Commands/main/version.json') | ConvertFrom-Json; ^
+            $localJson = Get-Content 'version.json' -Raw | ConvertFrom-Json; ^
+            if ($remoteJson.version -ne $localJson.version) { ^
+                Write-Host 'UPDATE AVAILABLE' -ForegroundColor Yellow; ^
+                Write-Host ('   Current: v' + $localJson.version) -ForegroundColor Gray; ^
+                Write-Host ('   Latest:  v' + $remoteJson.version) -ForegroundColor Green; ^
+                exit 1; ^
+            } else { ^
+                exit 0; ^
+            } ^
+        } catch { ^
+            exit 0; ^
+        }"
+
+    if errorlevel 1 (
+        echo.
+        echo.
+        %CE_YELLOW% "  ****************************************************************"
+        %CE_YELLOW% "  *                 NEW VERSION AVAILABLE!                       *"
+        %CE_YELLOW% "  ****************************************************************"
+        echo.
+        %CE_WHITE% "  Please download the latest release from GitHub to get new features."
+        echo.
+        pause
+    ) else (
+        echo   [OK]
+    )
+)
+:: -------------------------------------------------------------
+
 :MENU
 cls
 echo.
