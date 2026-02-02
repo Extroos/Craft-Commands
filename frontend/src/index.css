@@ -187,10 +187,11 @@ body::before {
 
 /* Quality Mode Enhancements */
 /* Quality Mode Enhancements: "Frosted Ceramic" Light Mode */
+/* Quality Mode Enhancements: "Frosted Ceramic" Light Mode */
 body.visual-quality-high {
   --glass-blur: 24px;
   --glass-opacity: 0.65;
-  --noise-opacity: 0.12;
+  --noise-opacity: 0.02; /* Significantly reduced to fix "blurry/grainy" text */
   
   /* Light Mode Specific: Strong definition */
   --glass-border-color: rgba(0, 0, 0, 0.08); /* Crisp outer ring */
@@ -204,6 +205,7 @@ body.visual-quality-high {
 html.dark body.visual-quality-high {
   --glass-opacity: 0.6;
   --glass-blur: 16px;
+  --noise-opacity: 0.12; /* Retain film grain aesthetic in Dark Mode */
   --glass-border-color: hsl(var(--primary) / 0.15); /* Slightly clearer border */
   --glass-shadow: 
     0 10px 20px -5px rgb(0 0 0 / 0.3), 
@@ -216,7 +218,7 @@ body.visual-quality-high .glass-morphism {
   border: 1px solid var(--glass-border-color) !important;
   box-shadow: var(--glass-shadow) !important;
   color: hsl(var(--foreground)) !important; /* Fix: Enforce solid text brightness */
-  will-change: transform, opacity, backdrop-filter;
+  /* Removed 'will-change' to prevent GPU rasterization blur on static text */
 }
 
 body.visual-quality-high .quality-shadow {
