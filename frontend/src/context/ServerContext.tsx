@@ -272,12 +272,24 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             setTimeout(() => setJavaDownloadStatus(null), 5000);
         };
 
+        // NEW: Clear server install progress on completion
+        const handleInstallComplete = (data: { serverId: string }) => {
+             setInstallProgress(prev => {
+                 const newState = { ...prev };
+                 delete newState[data.serverId];
+                 return newState;
+             });
+             // Also refresh status immediately
+             refreshServers();
+        };
+
         const unsubStatus = socketService.onStatus(handleStatus);
         const unsubStats = socketService.onStats(handleStats);
         const unsubLog = socketService.onLog(handleLog);
         const unsubInstallStatus = socketService.onInstallStatus(handleInstallStatus);
         const unsubInstallProgress = socketService.onInstallProgress(handleInstallProgress);
         const unsubInstallError = socketService.onInstallError(handleInstallError);
+        const unsubInstallComplete = socketService.onInstallComplete(handleInstallComplete);
 
         return () => {
              unsubStatus();
@@ -286,6 +298,7 @@ export const ServerProvider: React.FC<{ children: React.ReactNode }> = ({ childr
              unsubInstallStatus();
              unsubInstallProgress();
              unsubInstallError();
+             unsubInstallComplete();
         };
     }, []);
 

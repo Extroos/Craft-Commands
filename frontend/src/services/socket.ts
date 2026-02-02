@@ -79,9 +79,14 @@ class SocketService {
         return () => this.socket.off('install:progress', callback);
     }
 
-    onInstallError(callback: (data: { message: string, phase: string }) => void) {
-        this.socket.on('install:error', callback);
-        return () => this.socket.off('install:error', callback);
+    public onInstallError(callback: (data: { message: string, phase: string }) => void) {
+        this.socket.on('server:install:error', callback);
+        return () => this.socket.off('server:install:error', callback);
+    }
+
+    public onInstallComplete(callback: (data: { serverId: string }) => void) {
+        this.socket.on('server:install:complete', callback);
+        return () => this.socket.off('server:install:complete', callback);
     }
 }
 
