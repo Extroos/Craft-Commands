@@ -127,7 +127,9 @@ const AppContent: React.FC = () => {
         if (!user || !user.preferences.backgrounds) {
             // Pre-auth fallback for personal branding
             if (appState === 'LOGIN' && cached) return cached.login;
-            return undefined;
+            
+            // DEFAULT FALLBACK: If Quality Mode is on but no backgrounds set, show the default
+            return '/backgrounds/default.png';
         }
         
         const b = user.preferences.backgrounds;
