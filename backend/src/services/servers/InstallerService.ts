@@ -131,7 +131,7 @@ export class InstallerService extends EventEmitter {
                 dir: tempExtractDir,
                 onEntry: () => {
                     extractedCount++;
-                    if (extractedCount % 500 === 0) {
+                    if (extractedCount % 1000 === 0) {
                         this.emit('status', `Analyzing Modpack... (${extractedCount} files extracted)`);
                     }
                 }
@@ -335,9 +335,9 @@ export class InstallerService extends EventEmitter {
                         dir: serverDir,
                         onEntry: (entry, zipfile) => {
                             entryCount++;
-                            if (entryCount % 100 === 0) {
+                            if (entryCount % 1000 === 0) {
                                 const msg = `Extracting... (${entryCount} files processed)`;
-                                console.log(`[Installer:Forge] ${msg}`);
+                                // console.log(`[Installer:Forge] ${msg}`);
                                 this.emit('status', msg);
                                 onProgress?.(msg);
                             }
