@@ -186,25 +186,36 @@ body::before {
 }
 
 /* Quality Mode Enhancements */
+/* Quality Mode Enhancements: "Frosted Ceramic" Light Mode */
 body.visual-quality-high {
-  --glass-blur: 16px;
-  --glass-opacity: 0.85; /* High opacity for Light Mode readability */
+  --glass-blur: 24px;
+  --glass-opacity: 0.65;
   --noise-opacity: 0.12;
+  
+  /* Light Mode Specific: Strong definition */
+  --glass-border-color: rgba(0, 0, 0, 0.08); /* Crisp outer ring */
+  --glass-shadow: 
+    0 12px 32px -4px rgba(0, 0, 0, 0.08), 
+    0 4px 12px -2px rgba(0, 0, 0, 0.06),
+    inset 0 0 0 1px rgba(255, 255, 255, 0.7); /* "Cut Glass" Inner Highlight */
 }
 
-/* Dark Mode restoration */
+/* Dark Mode Restoration (Preserve deep glass look) */
 html.dark body.visual-quality-high {
   --glass-opacity: 0.6;
+  --glass-blur: 16px;
+  --glass-border-color: hsl(var(--primary) / 0.15); /* Slightly clearer border */
+  --glass-shadow: 
+    0 10px 20px -5px rgb(0 0 0 / 0.3), 
+    inset 0 1px 0 0 hsl(var(--primary) / 0.1);
 }
 
 body.visual-quality-high .glass-morphism {
   background: hsl(var(--card) / var(--glass-opacity)) !important;
-  backdrop-filter: blur(var(--glass-blur)) saturate(200%) !important;
-  border: 1px solid hsl(var(--primary) / 0.12) !important;
-  box-shadow: 
-    0 10px 15px -3px rgb(0 0 0 / 0.08), 
-    0 4px 6px -4px rgb(0 0 0 / 0.08),
-    inset 0 1px 0 0 hsl(var(--primary) / 0.1) !important;
+  backdrop-filter: blur(var(--glass-blur)) saturate(180%) !important;
+  border: 1px solid var(--glass-border-color) !important;
+  box-shadow: var(--glass-shadow) !important;
+  color: hsl(var(--foreground)) !important; /* Fix: Enforce solid text brightness */
   will-change: transform, opacity, backdrop-filter;
 }
 
