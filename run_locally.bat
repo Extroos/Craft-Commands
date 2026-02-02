@@ -33,25 +33,33 @@ if exist "version.json" (
     echo.
     %CE_GRAY% -NoNewline "  [System] " & %CE_WHITE% -NoNewline "Checking for updates..."
     
-    powershell -NoProfile -Command ^
-        "$wc = New-Object System.Net.WebClient; ^
-        $wc.Headers.Add('User-Agent', 'CraftCommands-Launcher'); ^
-        try { ^
-            $remoteJson = $wc.DownloadString('https://raw.githubusercontent.com/Extroos/Craft-Commands/main/version.json') | ConvertFrom-Json; ^
-            $localJson = Get-Content 'version.json' -Raw | ConvertFrom-Json; ^
-            if ($remoteJson.version -ne $localJson.version) { ^
-                Write-Host 'UPDATE AVAILABLE' -ForegroundColor Yellow; ^
-                Write-Host ('   Current: v' + $localJson.version) -ForegroundColor Gray; ^
-                Write-Host ('   Latest:  v' + $remoteJson.version) -ForegroundColor Green; ^
-                exit 1; ^
-            } else { ^
-                exit 0; ^
-            } ^
-        } catch { ^
-            exit 0; ^
-        }"
+    <!-- : Begin PowerShell Script Injection
+    (
+    echo $wc = New-Object System.Net.WebClient
+    echo $wc.Headers.Add^('User-Agent', 'CraftCommands-Launcher'^)
+    echo try {
+    echo     $remoteJson = $wc.DownloadString^('https://raw.githubusercontent.com/Extroos/Craft-Commands/main/version.json'^) ^| ConvertFrom-Json
+    echo     $localJson = Get-Content 'version.json' -Raw ^| ConvertFrom-Json
+    echo     if ^($remoteJson.version -ne $localJson.version^) {
+    echo         Write-Host 'UPDATE AVAILABLE' -ForegroundColor Yellow
+    echo         Write-Host ^('   Current: v' + $localJson.version^) -ForegroundColor Gray
+    echo         Write-Host ^('   Latest:  v' + $remoteJson.version^) -ForegroundColor Green
+    echo         exit 1
+    echo     } else {
+    echo         exit 0
+    echo     }
+    echo ^} catch {
+    echo     exit 0
+    echo ^}
+    ) > "%TEMP%\cc_update_check.ps1"
+    
+    powershell -NoProfile -ExecutionPolicy Bypass -File "%TEMP%\cc_update_check.ps1"
+    set "EXIT_CODE=!errorlevel!"
+    del "%TEMP%\cc_update_check.ps1" >nul 2>nul
+    
+    if !EXIT_CODE! equ 1 (
 
-    if errorlevel 1 (
+
         echo.
         echo.
         %CE_YELLOW% "  ****************************************************************"
