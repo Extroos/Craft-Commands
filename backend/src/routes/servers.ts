@@ -1083,7 +1083,8 @@ router.get('/:id/backups/:backupId/download', async (req, res) => {
     }
 });
 
-export default router;
+
+
 
 
 // ==================== PLAYER ROUTES ====================
@@ -1106,6 +1107,7 @@ router.get('/:id/players/:listType', async (req, res) => {
 
 // Kick Player
 router.post('/:id/players/kick', async (req, res) => {
+    console.log('[API] Hit /players/kick route');
     const { id } = req.params;
     const { name, reason } = req.body;
     const server = getServer(id);
@@ -1122,6 +1124,7 @@ router.post('/:id/players/kick', async (req, res) => {
 // Add Player (Op, Whitelist, Ban)
 router.post('/:id/players/:listType', async (req, res) => {
     const { id, listType } = req.params;
+    console.log(`[API] Hit /players/${listType} route (Generic)`);
     const { identifier } = req.body;
     const server = getServer(id);
     if (!server) return res.status(404).json({ error: 'Server not found' });
@@ -1134,5 +1137,21 @@ router.post('/:id/players/:listType', async (req, res) => {
         res.status(500).json({ error: e.message });
     }
 });
+
+// Remove Player
+router.delete('/:id/players/:listType/:identifier', async (req, res) => {
+    const { id, listType, identifier } = req.params;
+    const server = getServer(id);
+    if (!server) return res.status(404).json({ error: 'Server not found' });
+
+    try {
+        const result = await playerService.removePlayer(id, listType as any, identifier);
+        res.json(result);
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+export default router;
 
 
