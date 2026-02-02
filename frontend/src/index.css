@@ -188,8 +188,13 @@ body::before {
 /* Quality Mode Enhancements */
 body.visual-quality-high {
   --glass-blur: 16px;
-  --glass-opacity: 0.6;
+  --glass-opacity: 0.85; /* High opacity for Light Mode readability */
   --noise-opacity: 0.12;
+}
+
+/* Dark Mode restoration */
+html.dark body.visual-quality-high {
+  --glass-opacity: 0.6;
 }
 
 body.visual-quality-high .glass-morphism {
