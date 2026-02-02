@@ -97,9 +97,12 @@ import { useServers } from '../../context/ServerContext';
 import { useUser } from '../../context/UserContext';
 
 const Dashboard: React.FC<DashboardProps> = ({ serverId }) => {
-    const { servers, stats: allStats, logs, javaDownloadStatus } = useServers();
+    const { servers, stats: allStats, logs, javaDownloadStatus, installProgress: allInstallProgress } = useServers();
     const { user, updatePreferences } = useUser();
     const server = servers.find(s => s.id === serverId);
+    
+    // Check for active installation for THIS server
+    const installProgress = allInstallProgress && allInstallProgress[serverId];
     
     const [hasConflict, setHasConflict] = useState(false);
     const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
@@ -707,14 +710,23 @@ const Dashboard: React.FC<DashboardProps> = ({ serverId }) => {
                                     <div className="hero-controls-row flex flex-col sm:flex-row gap-2">
                                         <button 
                                             onClick={() => handlePower('start')}
-                                            disabled={(status !== ServerStatus.OFFLINE && status !== ServerStatus.CRASHED) || isJavaDownloading}
+                                            disabled={(status !== ServerStatus.OFFLINE && status !== ServerStatus.CRASHED) || isJavaDownloading || !!installProgress}
                                             className={`px-8 py-3 rounded font-bold text-xs transition-all border flex items-center justify-center gap-2 ${
-                                                (status === ServerStatus.OFFLINE || status === ServerStatus.CRASHED) && !isJavaDownloading
+                                                ((status === ServerStatus.OFFLINE || status === ServerStatus.CRASHED) && !isJavaDownloading && !installProgress)
                                                 ? 'bg-emerald-600 text-white border-emerald-500 hover:bg-emerald-700 shadow-sm' 
                                                 : 'bg-muted text-muted-foreground border-border cursor-not-allowed'
                                             }`}
                                         >
-                                            <Power size={18} /> <span className="hero-btn-text">Start</span>
+                                            {installProgress ? (
+                                                <>
+                                                    <Download size={18} className="animate-pulse" />
+                                                    <span className="hero-btn-text animate-pulse">{installProgress.message || 'Installing...'}</span>
+                                                </>
+                                            ) : (
+                                                <>
+                                                    <Power size={18} /> <span className="hero-btn-text">Start</span>
+                                                </>
+                                            )}
                                         </button>
 
                                         <button 
