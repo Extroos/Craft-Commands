@@ -5,7 +5,7 @@ import { authService } from '../auth/AuthService';
 import { discordService } from '../integrations/DiscordService';
 import { logger } from '../../utils/logger';
 
-const REMOTE_VERSION_URL = 'https://raw.githubusercontent.com/Extroos/craftCommand/main/version.json';
+const REMOTE_VERSION_URL = 'https://raw.githubusercontent.com/Extroos/Craft-Commands/main/version.json';
 
 type UpdateLevel = 'MAJOR' | 'MINOR' | 'PATCH';
 
