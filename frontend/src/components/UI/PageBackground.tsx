@@ -40,9 +40,9 @@ const PageBackground: React.FC<PageBackgroundProps> = ({ settings }) => {
         };
     }, [settings?.url, settings?.enabled]);
 
-    // Performance Mode: Render nothing if Reduced Motion is enabled
+    // Performance Mode: Render nothing if Quality Mode is disabled OR Reduced Motion is enabled
     // Must be AFTER hooks to comply with React rules
-    if (user?.preferences.reducedMotion) {
+    if (!user?.preferences.visualQuality || user?.preferences.reducedMotion) {
         return null;
     }
 
