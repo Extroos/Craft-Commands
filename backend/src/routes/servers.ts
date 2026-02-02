@@ -1104,6 +1104,21 @@ router.get('/:id/players/:listType', async (req, res) => {
     }
 });
 
+// Kick Player
+router.post('/:id/players/kick', async (req, res) => {
+    const { id } = req.params;
+    const { name, reason } = req.body;
+    const server = getServer(id);
+    if (!server) return res.status(404).json({ error: 'Server not found' });
+
+    try {
+        await playerService.kickPlayer(id, name, reason);
+        res.json({ success: true, message: `Kicked ${name}` });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
 // Add Player (Op, Whitelist, Ban)
 router.post('/:id/players/:listType', async (req, res) => {
     const { id, listType } = req.params;
@@ -1115,35 +1130,6 @@ router.post('/:id/players/:listType', async (req, res) => {
     try {
         const result = await playerService.addPlayer(id, listType as any, identifier);
         res.json(result);
-    } catch (e: any) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Remove Player
-router.delete('/:id/players/:listType/:identifier', async (req, res) => {
-    const { id, listType, identifier } = req.params;
-    const server = getServer(id);
-    if (!server) return res.status(404).json({ error: 'Server not found' });
-
-    try {
-        const result = await playerService.removePlayer(id, listType as any, identifier);
-        res.json(result);
-    } catch (e: any) {
-        res.status(500).json({ error: e.message });
-    }
-});
-
-// Kick Player
-router.post('/:id/players/kick', async (req, res) => {
-    const { id } = req.params;
-    const { name, reason } = req.body;
-    const server = getServer(id);
-    if (!server) return res.status(404).json({ error: 'Server not found' });
-
-    try {
-        await playerService.kickPlayer(id, name, reason);
-        res.json({ success: true, message: `Kicked ${name}` });
     } catch (e: any) {
         res.status(500).json({ error: e.message });
     }
