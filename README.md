@@ -16,24 +16,6 @@ Built with **React 19** and **Node.js**, featuring **granular permissions**, **a
 
 </div>
 
-## Features
-
-### 🎮 For Everyone (The Smooth Experience)
-
-- **Hybrid Orchestration** — Run servers as local processes or isolated Docker containers with a single toggle.
-- **One-Click Modpacks** — Guided setup for Paper, Purpur, Fabric, Forge, NeoForge, and major Modpacks.
-- **Zero-Config HTTPS** — Secure your panel with native SSL management handled entirely by our guided launcher.
-- **File Manager IDE** — Edit configurations, logs, and properties with syntax highlighting and instant saving.
-
-### 🛠️ For Developers & Power Users (The Engineering Edge)
-
-- **3-State Permissions** — Granular Access Control Lists (Grant, Deny, Inherit) for every server and system node.
-- **Audit Ledger** — Immutable logging of every system action, from login attempts to hierarchy violations.
-- **Aikar's Optimizations** — Built-in suite for JVM tuning, GC selection (ZGC/G1GC), and thread priority management.
-- **SQL Scaling (Optional)** — Switch from JSON to SQLite/MySQL for team deployments with a single config change.
-
----
-
 ## Why Craft Commands? 🚀
 
 ### The "Goldilocks" Solution
@@ -44,18 +26,31 @@ Craft Commands sits perfectly in the middle:
 
 - **Easier than a Batch File**: One click to start. No editing text files to change RAM.
 - **More Powerful than a Launcher**: Full breakdown of CPU/RAM usage, player auditing, and remote access.
-- **Simpler than Enterprise**: Runs on **Windows**, runs **Natively** (no Docker required), and installs in **seconds**.
+- **Simpler than Enterprise**: Runs on **Windows**, runs **Natively** (Docker is optional and never required), and installs in **seconds**.
 
-### 🆚 Competitor Breakdown
+![Server Selection](assets/ServerSelection.png)
+_manage multiple servers with a clean, professional interface._
 
-| Feature           | Standard Launchers | Enterprise Panels (Pterodactyl/Pelican) |      **Craft Commands**       |
-| :---------------- | :----------------: | :-------------------------------------: | :---------------------------: |
-| **Setup Time**    |      Instant       |        Hours (Linux/Docker req.)        |   **Instant (Unzip & Run)**   |
-| **OS Support**    |        All         |           Linux Only (mostly)           |    **Windows, Mac, Linux**    |
-| **Process Type**  |    Local Child     |           Isolated Container            | **Hybrid (Native OR Docker)** |
-| **Remote Access** |         ❌         |                   ✅                    |    **✅ (Secure Tunnels)**    |
-| **Auto-Repair**   | ❌ (Crash = Dead)  |            ✅ (Auto-Restart)            | **✅ (Diagnosis + Healing)**  |
-| **Proxy Support** |         ❌         |              Manual Config              | **✅ Atomic (Self-Healing)**  |
+---
+
+## Features
+
+### 🎮 For Everyone (The Smooth Experience)
+
+- **One-Click Modpacks** — Guided setup for Paper, Purpur, Fabric, Forge, NeoForge, and major Modpacks.
+- **Zero-Config HTTPS** — Secure your panel with native SSL management handled entirely by our guided launcher.
+- **File Manager IDE** — Edit configurations, logs, and properties with syntax highlighting and instant saving.
+- **Quality Mode** — A stunning, glass-morphic interface that feels like a modern app, not a spreadsheet.
+
+### 🛠️ For Developers & Power Users (The Engineering Edge)
+
+- **Hybrid Orchestration** — Run servers as local processes or isolated Docker containers with a single toggle.
+- **3-State Permissions** — Granular Access Control Lists (Grant, Deny, Inherit) for every server and system node.
+- **Audit Ledger** — Immutable logging of every system action, from login attempts to hierarchy violations.
+- **SQL Scaling** — Start with JSON for portability, switch to SQLite (Robust v1.8.0) or MySQL for teams with one config change.
+
+![Dashboard](assets/Dashboard.png)
+_Real-time monitoring with heuristic diagnosis and self-healing controls._
 
 ---
 
@@ -63,21 +58,13 @@ Craft Commands sits perfectly in the middle:
 
 We didn't just build a panel; we built a **Sysadmin in a Box**.
 
-- **👻 The Exorcist**: Ever tried to start a server and got "Port 25565 already in use"? Our `NetUtils` engine hunts down those "ghost" Java processes and politely (forcefully) removes them so you can start instantly.
-- **🎨 "Arty" Interface**: We hate boring dashboards. Ours runs at **60 FPS** with Framer Motion animations, glassmorphism, and reactive layouts. It feels like a video game, not a spreadsheet.
-- **🧠 The Doctor**: Our **Heuristic Diagnosis Engine** reads your logs faster than you can. It doesn't just say "Crashed"; it says _"You accepted the EULA but forgot to install Java 21. Fixing it now..."_
-- **⚛️ Atomic Proxy**: Want a network? Deploy a Velocity Proxy. If it crashes, we restart it. If a backend server dies, we queue players. It's a self-healing mesh network for your bedroom.
+- **Agile Networking**: Ever tried to start a server and got "Port 25565 already in use"? Our engine detects the conflict and guides you to fix it instantly.
+- **The Doctor**: Our **Heuristic Diagnosis Engine** reads your logs faster than you can. It identifies common issues (EULA, Java version, Crash loops) and offers solutions or automatic fixes where safe.
+- **Atomic Proxy**: Want a network? Deploy a Velocity Proxy. If it crashes, we restart it. If a backend server dies, we queue players. It's a self-healing mesh network for your bedroom.
 
 ---
 
 ## Quick Start
-
-### Requirements
-
-- **Node.js 18+**
-- **Windows 10+**, **macOS 10.15+**, or **Linux (Ubuntu 20.04+)**
-
----
 
 ### Windows (Recommended)
 
@@ -87,14 +74,7 @@ Craft Commands includes a guided launcher — **no commands required**.
 2. Choose **[1] Start (Auto-Setup)**
 3. The dashboard opens automatically in your browser
 
-The launcher also provides:
-
-- HTTPS setup
-- Remote access setup
-- Repair / recovery options
-- Emergency remote-access disable
-
----
+The launcher also provides HTTPS setup, remote access controls, and emergency repairs.
 
 ### Linux / macOS (Manual)
 
@@ -107,19 +87,7 @@ cd frontend && npm install && cd ..
 npm run start:all
 ```
 
-### Access
-
-Open the dashboard at:  
-**http://localhost:3000**
-
----
-
-### Default Credentials (First Run Only)
-
-- **Email:** `admin@craftcommands.io`
-- **Password:** `admin`
-
-You will be **required to change these credentials immediately** after the first login.
+Access at: **http://localhost:3000**
 
 ---
 
@@ -130,19 +98,7 @@ Craft Commands follows a **Secure by Default, Explicit by Choice** philosophy.
 - **Network Isolation** — Local-only binding by default (`127.0.0.1`).
 - **Explicit Exposure** — Remote access requires owner-level approval and guided configuration.
 - **Hierarchy Guard** — Strict role-based isolation (Owner > Admin > Manager). Users cannot modify anyone at or above their own level.
-- **Token Hardening** — JWT-based sessions with industry-standard bcrypt hashing for all credentials.
-- **Atomic Operations** — Resource locking prevents data corruption during simultaneous server modifications.
 - **Emergency Killswitch** — Instant local launcher options to sever all external connections.
-
----
-
-## Technical Architecture ⚙️
-
-- **Frontend:** React 19 (Latest), Vite, TailwindCSS, Framer Motion (60FPS animations)
-- **Backend:** Node.js (CommonJS), Express, Socket.IO (Real-time streams)
-- **Orchestration:** Native Process Spawning & Docker Engine Integration
-- **Storage:** Hybrid SQLite (for teams) and JSON (for solo portability)
-- **Security:** Helmet, Rate-Limiting, JWT, Hierarchy Middleware
 
 ---
 
