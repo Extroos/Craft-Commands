@@ -751,15 +751,15 @@ const Dashboard: React.FC<DashboardProps> = ({ serverId }) => {
                                             initial={{ height: 0, opacity: 0 }}
                                             animate={{ height: 'auto', opacity: 1 }}
                                             exit={{ height: 0, opacity: 0 }}
-                                            className="px-8 pb-8 mt-auto"
+                                            className="px-8 pb-8 pt-4 w-full"
                                         >
-                                            <div className="flex items-center gap-4 p-4 bg-muted/30 border border-border rounded-lg">
+                                            <div className="flex items-center gap-4 p-4 bg-muted/30 border border-border rounded-lg shadow-sm backdrop-blur-md">
                                                 <div className="p-2 bg-primary/10 text-primary rounded-lg shrink-0">
                                                     <Download size={20} className="animate-bounce" />
                                                 </div>
-                                                <div className="flex-1">
+                                                <div className="flex-1 min-w-0">
                                                     <div className="flex justify-between items-end mb-1.5">
-                                                        <span className="text-[11px] font-bold text-foreground uppercase tracking-wider">
+                                                        <span className="text-[11px] font-bold text-foreground uppercase tracking-wider truncate">
                                                             Downloading Java Environment ({javaDownloadStatus?.percent}%)
                                                         </span>
                                                     </div>
