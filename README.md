@@ -28,6 +28,17 @@ Craft Commands sits perfectly in the middle:
 - **More Powerful than a Launcher**: Full breakdown of CPU/RAM usage, player auditing, and remote access.
 - **Simpler than Enterprise**: Runs on **Windows**, runs **Natively** (Docker is optional and never required), and installs in **seconds**.
 
+### 🆚 Competitor Breakdown
+
+| Feature           | Standard Launchers | Enterprise Panels (Pterodactyl/Pelican) |      **Craft Commands**       |
+| :---------------- | :----------------: | :-------------------------------------: | :---------------------------: |
+| **Setup Time**    |      Instant       |        Hours (Linux/Docker req.)        |   **Instant (Unzip & Run)**   |
+| **OS Support**    |        All         |           Linux Only (mostly)           |    **Windows, Mac, Linux**    |
+| **Process Type**  |    Local Child     |           Isolated Container            | **Hybrid (Native OR Docker)** |
+| **Remote Access** |         ❌         |                   ✅                    |    **✅ (Secure Tunnels)**    |
+| **Auto-Repair**   | ❌ (Crash = Dead)  |            ✅ (Auto-Restart)            | **✅ (Diagnosis + Healing)**  |
+| **Proxy Support** |         ❌         |              Manual Config              | **✅ Atomic (Self-Healing)**  |
+
 ![Server Selection](assets/ServerSelection.png)
 _manage multiple servers with a clean, professional interface._
 
@@ -66,6 +77,11 @@ We didn't just build a panel; we built a **Sysadmin in a Box**.
 
 ## Quick Start
 
+### Requirements
+
+- **Node.js 18+**
+- **Windows 10+**, **macOS 10.15+**, or **Linux (Ubuntu 20.04+)**
+
 ### Windows (Recommended)
 
 Craft Commands includes a guided launcher — **no commands required**.
@@ -87,7 +103,16 @@ cd frontend && npm install && cd ..
 npm run start:all
 ```
 
-Access at: **http://localhost:3000**
+### Access
+
+Open the dashboard at: **http://localhost:3000**
+
+### Default Credentials (First Run Only)
+
+- **Email:** `admin@craftcommands.io`
+- **Password:** `admin`
+
+_You will be **required to change these credentials immediately** after the first login._
 
 ---
 
@@ -98,7 +123,18 @@ Craft Commands follows a **Secure by Default, Explicit by Choice** philosophy.
 - **Network Isolation** — Local-only binding by default (`127.0.0.1`).
 - **Explicit Exposure** — Remote access requires owner-level approval and guided configuration.
 - **Hierarchy Guard** — Strict role-based isolation (Owner > Admin > Manager). Users cannot modify anyone at or above their own level.
+- **Token Hardening** — JWT-based sessions with industry-standard bcrypt hashing for all credentials.
 - **Emergency Killswitch** — Instant local launcher options to sever all external connections.
+
+---
+
+## Technical Architecture ⚙️
+
+- **Frontend:** React 19 (Latest), Vite, TailwindCSS, Framer Motion (60FPS animations)
+- **Backend:** Node.js, Express, Socket.IO (Real-time streams)
+- **Orchestration:** Native Process Spawning & Docker Engine Integration
+- **Storage:** Hybrid SQLite (for teams) and JSON (for solo portability)
+- **Security:** Helmet, Rate-Limiting, JWT, Hierarchy Middleware
 
 ---
 
