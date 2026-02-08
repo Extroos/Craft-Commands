@@ -5,11 +5,11 @@
   "author": "Extroos",
   "type": "module",
   "scripts": {
-    "dev": "npm run dev --prefix frontend",
+    "dev": "concurrently \"npm run dev --prefix frontend\" \"npm run start --prefix backend\" --names \"FRONT,BACK\" --prefix-colors \"cyan,magenta\" --kill-others",
     "build": "npm run build --prefix frontend",
     "preview": "npm run preview --prefix frontend",
     "start:backend": "npm run start --prefix backend",
-    "start:all": "concurrently \"npm run dev\" \"npm run start:backend\" --names \"FRONT,BACK\" --prefix-colors \"cyan,magenta\" --kill-others"
+    "start:all": "npm run dev"
   },
   "dependencies": {
     "@types/react-router-dom": "^5.3.3",

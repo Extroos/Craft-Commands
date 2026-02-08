@@ -36,6 +36,7 @@ backend/dist
 /backend/data/
 /data/
 /uploads/
+/backend/uploads/
 /backend/minecraft_servers/
 /backend/src/data/backups/
 /backend/src/data/servers.json
