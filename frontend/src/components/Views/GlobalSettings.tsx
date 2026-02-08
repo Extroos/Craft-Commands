@@ -136,7 +136,7 @@ const GlobalSettingsView: React.FC = () => {
                         </div>
                         <div>
                             <h3 className="font-semibold text-base">Operational Mode</h3>
-                            <p className="text-xs text-muted-foreground">Define how Craft Commands operates this instance.</p>
+                            <p className="text-xs text-muted-foreground">Define how CraftCommand operates this instance.</p>
                         </div>
                     </div>
 
@@ -335,7 +335,7 @@ const GlobalSettingsView: React.FC = () => {
                                                 <div className="bg-background rounded p-3">
                                                     <p className="text-xs text-muted-foreground mb-1">Find public link in:</p>
                                                     <ul className="text-xs space-y-1 ml-4 list-disc text-emerald-700">
-                                                        <li>"Craft Commands Tunnel" window</li>
+                                                        <li>"CraftCommand Tunnel" window</li>
                                                         <li>Backend console</li>
                                                     </ul>
                                                 </div>
@@ -505,7 +505,7 @@ const GlobalSettingsView: React.FC = () => {
                         </div>
                         <div>
                             <h3 className="font-semibold text-base">Data Storage</h3>
-                            <p className="text-xs text-muted-foreground">Configure how Craft Commands persists server data.</p>
+                            <p className="text-xs text-muted-foreground">Configure how CraftCommand persists server data.</p>
                         </div>
                     </div>
 

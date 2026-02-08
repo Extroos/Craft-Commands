@@ -1,6 +1,6 @@
 # HTTPS & Reverse Proxy Guide
 
-Craft Commands runs by default on **HTTP** (port 3000/3001) for local development and LAN usage.
+CraftCommand runs by default on **HTTP** (port 3000/3001) for local development and LAN usage.
 
 > [!IMPORTANT]
 > **HTTPS does not equal Remote Access.**
@@ -18,7 +18,7 @@ Download Caddy from [caddyserver.com/download](https://caddyserver.com/download)
 
 ### 2. Caddyfile Configuration
 
-Create a file named `Caddyfile` in your Craft Commands root.
+Create a file named `Caddyfile` in your CraftCommand root.
 
 **For LAN Access (Automatic Self-Signed):**
 

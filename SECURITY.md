@@ -2,7 +2,7 @@
 
 ## Supported Versions
 
-The following versions of Craft Commands are currently supported with security updates:
+The following versions of CraftCommand are currently supported with security updates:
 
 | Version | Supported                   |
 | ------- | --------------------------- |
@@ -12,7 +12,7 @@ The following versions of Craft Commands are currently supported with security u
 
 ## Reporting a Vulnerability
 
-Security is taken seriously in Craft Commands. If you discover a security vulnerability, please follow these steps:
+Security is taken seriously in CraftCommand. If you discover a security vulnerability, please follow these steps:
 
 1. **Do not create a public issue** for security vulnerabilities.
 2. Contact me directly through GitHub with:
@@ -25,7 +25,7 @@ Security is taken seriously in Craft Commands. If you discover a security vulner
 
 ## Security Architecture (v1.8.0 Stable)
 
-Craft Commands v1.8.0 introduces several critical security hardening measures:
+CraftCommand v1.8.0 introduces several critical security hardening measures:
 
 - **Granular Permissions & Overrides**: A 3-state permission engine (Inherited, Allow, Deny) with explicit server-level and global system-wide overrides.
 - **Hardened Hierarchical Guards**: Strict enforcement of role hierarchy (Owner > Admin > Manager > Viewer) that prevents staff from elevating their own or others' rights beyond their assigned scope.
@@ -36,11 +36,11 @@ Craft Commands v1.8.0 introduces several critical security hardening measures:
 
 ## Security Best Practices
 
-When using Craft Commands:
+When using CraftCommand:
 
 - Keep your installation up to date with the latest version
 - Use strong authentication for any exposed endpoints
 - Review server configurations regularly
 - Monitor logs for suspicious activity
 
-Thank you for helping keep Craft Commands safe and secure!
+Thank you for helping keep CraftCommand safe and secure!

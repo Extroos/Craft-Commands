@@ -42,7 +42,7 @@ const Integrations: React.FC<IntegrationsProps> = ({ serverId }) => {
     const [webhookConfig, setWebhookConfig] = useState<DiscordConfig>({
         enabled: false,
         webhookUrl: '',
-        botName: 'Craft Commands Bot',
+        botName: 'CraftCommand Bot',
         avatarUrl: '',
         events: {
             onStart: true,

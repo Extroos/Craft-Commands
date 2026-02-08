@@ -73,7 +73,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onViewStatus }) => {
                         <div className="absolute inset-0 bg-emerald-500/10 rounded-full opacity-0 group-hover:opacity-20 transition-opacity duration-700"></div>
                         <img 
                             src="/website-icon.png" 
-                            alt="Craft Commands" 
+                            alt="CraftCommand" 
                             className="w-40 h-40 object-contain relative z-10 drop-shadow-2xl hover:scale-105 transition-transform duration-500 ease-out" 
                         />
                     </div>

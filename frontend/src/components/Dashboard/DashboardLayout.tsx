@@ -333,7 +333,7 @@ const Dashboard: React.FC<DashboardProps> = ({ serverId }) => {
                                 <div>
                                     <h3 className="text-sm font-bold text-foreground">Update Available: v{updateInfo.latestVersion}</h3>
                                     <p className="text-xs text-muted-foreground">
-                                        {updateInfo.title || 'A new version of Craft Commands is available.'}
+                                        {updateInfo.title || 'A new version of CraftCommand is available.'}
                                     </p>
                                 </div>
                             </div>

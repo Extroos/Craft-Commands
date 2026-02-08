@@ -1,5 +1,5 @@
 {
-  "name": "craft-commands-backend",
+  "name": "craftcommand-backend",
   "version": "1.8.0",
   "author": "Extroos",
   "description": "Backend service for CraftCommand",

@@ -790,7 +790,7 @@ const UserProfileView: React.FC = () => {
                                     <Key size={18} className={theme.text} /> API Access
                                 </h2>
                                 <p className="text-sm text-muted-foreground mb-6">
-                                    Use this key to authenticate with the Craft Commands REST API for CI/CD pipelines or external monitoring scripts.
+                                    Use this key to authenticate with the CraftCommand REST API for CI/CD pipelines or external monitoring scripts.
                                 </p>
 
                                 <div className="bg-background border border-border rounded-lg p-4 flex items-center justify-between gap-4 mb-4">

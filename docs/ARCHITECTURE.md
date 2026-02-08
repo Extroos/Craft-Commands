@@ -1,8 +1,8 @@
-# Craft Commands Architecture
+# CraftCommand Architecture
 
 ## Overview
 
-Craft Commands is a Minecraft Server Management Solution built as a Monorepo.
+CraftCommand is a Minecraft Server Management Solution built as a Monorepo.
 
 ### Tech Stack
 

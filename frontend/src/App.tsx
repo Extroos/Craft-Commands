@@ -1,4 +1,4 @@
-// Craft Commands Management App
+// CraftCommand Management App
 import React, { useState } from 'react';
 import { AnimatePresence, motion, MotionConfig } from 'framer-motion';
 import Header from './components/Layout/Header';

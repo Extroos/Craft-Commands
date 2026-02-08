@@ -16,7 +16,7 @@ const GUIDES = {
         content: `
 # Running This For Real: What's Next?
 
-You are currently viewing the **Craft Commands Web Interface**. To turn this into a fully functional server manager that runs actual Minecraft instances on your machine or a VPS, specific infrastructure is required.
+You are currently viewing the **CraftCommand Web Interface**. To turn this into a fully functional server manager that runs actual Minecraft instances on your machine or a VPS, specific infrastructure is required.
 
 ## 1. The "Backend" Problem
 Browsers cannot directly launch \`java -jar server.jar\` on your computer due to security sandboxing.
@@ -24,7 +24,7 @@ Browsers cannot directly launch \`java -jar server.jar\` on your computer due to
 *   **For Remote Hosting:** You need a dedicated backend service (written in Node.js, Go, or Rust) running on the server that listens for commands from this dashboard.
 
 ## 2. Do I need Docker?
-Professional hosting panels (like Pterodactyl) use **Docker**, and it is highly recommended for Craft Commands too.
+Professional hosting panels (like Pterodactyl) use **Docker**, and it is highly recommended for CraftCommand too.
 *   **Why?** Docker isolates the server. If a malicious plugin tries to delete files, it can only see inside its container, not your entire Windows/Linux PC.
 *   **Requirement:** To run the full backend version of this app, you would need **Docker Desktop** installed.
 

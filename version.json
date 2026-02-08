@@ -1,6 +1,6 @@
 {
   "version": "1.8.0",
-  "title": "Craft Commands",
+  "title": "CraftCommand",
   "notes": [
     "Quality Mode (Beta): Unlock custom backgrounds with glassmorphism, blur effects, and smooth animations.",
     "Adaptive Dashboard: New 'Micro Mode' for stats cards and fully responsive grid layout with drag-and-drop persistence.",

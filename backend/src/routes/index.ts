@@ -28,7 +28,7 @@ export const setupRoutes = (app: Express) => {
     
     // Status Route
     app.get('/api/status', (req, res) => {
-        res.json({ status: 'online', version: '1.7.5', app: 'Craft Commands' });
+        res.json({ status: 'online', version: '1.7.5', app: 'CraftCommand' });
     });
 };
 
