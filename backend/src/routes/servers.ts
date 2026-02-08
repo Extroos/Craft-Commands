@@ -1106,8 +1106,8 @@ router.get('/:id/players/:listType', async (req, res) => {
 });
 
 // Kick Player
-router.post('/:id/players/kick', async (req, res) => {
-    console.log('[API] Hit /players/kick route');
+router.post('/:id/kick-player', async (req, res) => {
+    console.log('[API] Hit /kick-player route');
     const { id } = req.params;
     const { name, reason } = req.body;
     const server = getServer(id);

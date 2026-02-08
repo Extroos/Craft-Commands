@@ -511,7 +511,7 @@ class ApiService {
     }
 
     async kickPlayer(id: string, name: string, reason?: string): Promise<void> {
-        await fetch(`${API_URL}/servers/${id}/players/kick`, {
+        await fetch(`${API_URL}/servers/${id}/kick-player`, {
             method: 'POST',
             headers: { 
                 'Content-Type': 'application/json',
