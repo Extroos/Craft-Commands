@@ -2,6 +2,7 @@ import express from 'express';
 import { authService } from '../services/auth/AuthService';
 import { verifyToken, requirePermission, requireRole } from '../middleware/authMiddleware';
 import { auditService } from '../services/system/AuditService';
+import { systemSettingsService } from '../services/system/SystemSettingsService';
 
 import rateLimit from 'express-rate-limit';
 
@@ -46,11 +47,17 @@ router.patch('/me', verifyToken, (req, res) => {
 
 // Admin: List Users
 router.get('/users', verifyToken, requirePermission('users.manage'), (req, res) => {
+    if (!systemSettingsService.isHostMode()) {
+        return res.status(403).json({ error: 'Multi-user features are disabled in Solo Mode.' });
+    }
     res.json(authService.getUsers());
 });
 
 // Admin: Create User
 router.post('/users', verifyToken, requirePermission('users.manage'), async (req, res) => {
+    if (!systemSettingsService.isHostMode()) {
+        return res.status(403).json({ error: 'Multi-user features are disabled in Solo Mode.' });
+    }
     const actor = (req as any).user;
     try {
         const { password, ...data } = req.body;
@@ -64,6 +71,9 @@ router.post('/users', verifyToken, requirePermission('users.manage'), async (req
 
 // Admin: Update User
 router.patch('/users/:id', verifyToken, requirePermission('users.manage'), (req, res) => {
+    if (!systemSettingsService.isHostMode()) {
+        return res.status(403).json({ error: 'Multi-user features are disabled in Solo Mode.' });
+    }
     const { id } = req.params;
     const actor = (req as any).user;
     try {
@@ -77,6 +87,9 @@ router.patch('/users/:id', verifyToken, requirePermission('users.manage'), (req,
 
 // Admin: Delete User
 router.delete('/users/:id', verifyToken, requirePermission('users.manage'), (req, res) => {
+    if (!systemSettingsService.isHostMode()) {
+        return res.status(403).json({ error: 'Multi-user features are disabled in Solo Mode.' });
+    }
     const { id } = req.params;
     const actor = (req as any).user;
     try {

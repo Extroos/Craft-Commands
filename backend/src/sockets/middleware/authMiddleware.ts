@@ -1,17 +1,6 @@
 import { Socket } from 'socket.io';
 import jwt from 'jsonwebtoken';
-import fs from 'fs-extra';
-import path from 'path';
-
-const USERS_FILE = path.join(process.cwd(), 'data', 'users.json');
-
-const getUserById = (id: string) => {
-    try {
-        if (!fs.existsSync(USERS_FILE)) return null;
-        const users = fs.readJSONSync(USERS_FILE);
-        return users.find((u: any) => u.id === id);
-    } catch (e) { return null; }
-};
+import { userRepository } from '../../storage/UserRepository';
 
 export const socketAuthMiddleware = async (socket: Socket, next: (err?: any) => void) => {
     const token = socket.handshake.auth.token;
@@ -29,8 +18,8 @@ export const socketAuthMiddleware = async (socket: Socket, next: (err?: any) => 
         
         if (!userId) return next(new Error('Authentication Error: Invalid Token Payload'));
 
-        // Load full user from disk to ensure we have Role/Permissions
-        const user = getUserById(userId);
+        // Load full user from disk/DB to ensure we have Role/Permissions and latest Profile info
+        const user = await userRepository.findById(userId);
         if (!user) return next(new Error('Authentication Error: User Not Found'));
 
         // Attach user data to socket

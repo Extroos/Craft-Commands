@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Power, RotateCcw, Ban, Activity, Cpu, Network, Users, Copy, Check, Disc, Clock, Terminal, AlertTriangle, Info, X, Download, Zap } from 'lucide-react';
+import { Share2, Power, RotateCcw, Ban, Activity, Cpu, Network, Users, Copy, Check, Disc, Clock, Terminal, AlertTriangle, Info, X, Download, Zap } from 'lucide-react';
 import { ServerStatus, ServerConfig, TabView } from '@shared/types';
 
 import { API } from '../../services/api';
@@ -9,7 +9,6 @@ import { socketService } from '../../services/socket';
 import { useToast } from '../UI/Toast';
 import { motion, AnimatePresence } from 'framer-motion';
 import { DiagnosisCard } from '../Dashboard/DiagnosisCard';
-
 
 import { Responsive, useContainerWidth } from 'react-grid-layout';
 import 'react-grid-layout/css/styles.css';
@@ -95,6 +94,8 @@ const Sparkline: React.FC<{ data: number[], color: string, height?: number, max?
 
 import { useServers } from '../../context/ServerContext';
 import { useUser } from '../../context/UserContext';
+import { useCollaboration } from '../../context/CollaborationContext';
+import { useSystem } from '../../context/SystemContext';
 
 const Dashboard: React.FC<DashboardProps> = ({ serverId }) => {
     const { servers, stats: allStats, logs, javaDownloadStatus, installProgress: allInstallProgress } = useServers();
@@ -106,6 +107,8 @@ const Dashboard: React.FC<DashboardProps> = ({ serverId }) => {
     
     const [hasConflict, setHasConflict] = useState(false);
     const [analysis, setAnalysis] = useState<AnalysisResult | null>(null);
+    const { sendChat } = useCollaboration();
+    const { hostMode } = useSystem();
 
     const [cpuHistory, setCpuHistory] = useState<number[]>(Array(40).fill(0));
     const [memHistory, setMemHistory] = useState<number[]>(Array(40).fill(0));
@@ -506,8 +509,26 @@ const Dashboard: React.FC<DashboardProps> = ({ serverId }) => {
                                     ))}
                                 </div>
                             </div>
-                            <div className="text-[10px] font-mono text-muted-foreground bg-background/50 px-2 py-1 rounded">
-                                SYSTEM_HEURISTICS
+                            <div className="flex flex-col items-end gap-2">
+                                <div className="text-[10px] font-mono text-muted-foreground bg-background/50 px-2 py-1 rounded">
+                                    SYSTEM_HEURISTICS
+                                </div>
+                                {hostMode && (
+                                    <button 
+                                        onClick={() => {
+                                            const summary = `Smart Analysis: ${analysis.issues.join(' | ')}`;
+                                            sendChat(serverId, `📢 [Broadcast] ${summary}`);
+                                        }}
+                                        className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-bold transition-all shadow-sm ${
+                                            analysis.status === 'CRITICAL' 
+                                            ? 'bg-rose-500 text-white hover:bg-rose-600' 
+                                            : 'bg-amber-500 text-white hover:bg-amber-600'
+                                        }`}
+                                    >
+                                        <Share2 size={12} />
+                                        Broadcast to Team
+                                    </button>
+                                )}
                             </div>
                         </div>
                     </motion.div>

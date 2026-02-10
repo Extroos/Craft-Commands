@@ -13,6 +13,7 @@ import { useToast } from '../UI/Toast';
 
 import { API } from '../../services/api';
 import { useUser } from '../../context/UserContext';
+import { useCollaboration } from '../../context/CollaborationContext';
 
 
 interface FileManagerProps {
@@ -29,6 +30,7 @@ const FileManager: React.FC<FileManagerProps> = ({ serverId }) => {
     const [searchTerm, setSearchTerm] = useState('');
     const [sortConfig, setSortConfig] = useState<{ key: 'name' | 'size' | 'modified', direction: 'asc' | 'desc' }>({ key: 'name', direction: 'asc' });
     const [isDragging, setIsDragging] = useState(false);
+    const { updateActiveView, presence } = useCollaboration();
     
     // Lifecycle Refs
     const mountedRef = useRef(true);
@@ -42,8 +44,11 @@ const FileManager: React.FC<FileManagerProps> = ({ serverId }) => {
 
     useEffect(() => {
         mountedRef.current = true;
-        return () => { mountedRef.current = false; };
-    }, []);
+        updateActiveView(serverId, 'files'); // Set initial view
+        return () => { 
+            mountedRef.current = false; 
+        };
+    }, [serverId]);
 
     const fetchFiles = async () => {
         try {
@@ -417,6 +422,7 @@ const FileManager: React.FC<FileManagerProps> = ({ serverId }) => {
                                                         try {
                                                             const content = await API.getFileContent(serverId, file.path);
                                                             setEditorFile({ node: file, content });
+                                                            updateActiveView(serverId, `files:${file.name}`);
                                                         } catch (e) {
                                                             addToast('error', 'Read Error', 'Could not read file content.');
                                                         }
@@ -424,9 +430,16 @@ const FileManager: React.FC<FileManagerProps> = ({ serverId }) => {
                                                 }}
                                             >
                                                 {getFileIcon(file.type)}
-                                                <span className={`font-medium transition-colors ${file.type === 'folder' ? 'text-foreground group-hover:text-primary' : 'text-muted-foreground group-hover:text-foreground'}`}>
+                                                 <span className={`font-medium transition-colors ${file.type === 'folder' ? 'text-foreground group-hover:text-primary' : 'text-muted-foreground group-hover:text-foreground'}`}>
                                                     {file.name}
                                                 </span>
+                                                {/* Smart Collab: LIVE Badge */}
+                                                {!file.isDirectory && presence[serverId]?.some(p => p.activeView === `files:${file.name}` && p.userId !== user?.id) && (
+                                                    <span className="flex items-center gap-1.5 px-1.5 py-0.5 rounded bg-emerald-500/10 text-[9px] font-bold text-emerald-500 animate-pulse border border-emerald-500/20 shadow-[0_0_10px_rgba(16,185,129,0.1)]">
+                                                        <div className="w-1 h-1 rounded-full bg-emerald-500" />
+                                                        LIVE
+                                                    </span>
+                                                )}
                                                 {file.isProtected && (
                                                     <span title="System File" className="ml-2 flex items-center">
                                                         <Shield size={12} className="text-emerald-500" />
@@ -537,7 +550,7 @@ const FileManager: React.FC<FileManagerProps> = ({ serverId }) => {
                                     </button>
                                 )}
                                 <button 
-                                    onClick={() => setEditorFile(null)}
+                                    onClick={() => { setEditorFile(null); updateActiveView(serverId, 'files'); }}
                                     className="p-2 hover:bg-secondary text-muted-foreground hover:text-foreground rounded-lg transition-colors"
                                 >
                                     <X size={20} />

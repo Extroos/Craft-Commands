@@ -89,8 +89,25 @@ class SystemSettingsService {
         }
     }
 
-    getSettings(): SystemSettings {
-        return this.settings;
+    getSettings(): any {
+        let version = '0.0.0';
+        try {
+            const versionFile = path.join(process.cwd(), '../version.json');
+            if (fs.existsSync(versionFile)) {
+                version = fs.readJSONSync(versionFile).version;
+            }
+        } catch (e) {
+            console.error('[SystemSettingsService] Failed to read version.json:', e);
+        }
+
+        return {
+            ...this.settings,
+            version
+        };
+    }
+
+    isHostMode(): boolean {
+        return this.settings?.app?.hostMode !== false;
     }
 
     updateSettings(updates: any): SystemSettings {

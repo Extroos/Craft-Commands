@@ -1,11 +1,11 @@
 {
-  "version": "1.9.0",
-  "title": "CraftCommand: Plugin Marketplace Stabilization",
+  "version": "1.9.1",
+  "title": "CraftCommand: Collab Hardening & Host Mode Sync",
   "notes": [
-    "Stable: Plugin Marketplace is now fully operational with Modrinth, Spiget, and Hangar integration.",
-    "Fixed: Plugin button visibility in header and missing API routes.",
-    "Improved: Notification system hardened and performance-optimized.",
-    "Improved: Version consistency across all project modules.",
-    "Security: Standardized JWT secrets for development stability."
+    "Feature: Introduced 'Host Mode' to toggle multi-user collaboration and user management.",
+    "Improved: OperatorChat refined with PFP syncing and removal of automated system tips.",
+    "Improved: Centralized version management with version.json as the single source of truth.",
+    "Fixed: Resolved stale notification loops and hardened version comparison logic.",
+    "Stability: Enhanced SystemContext to dynamically propagate versioning across the UI."
   ]
 }

@@ -9,6 +9,7 @@ import { useUser } from '../../context/UserContext';
 import AuditLog from './AuditLog';
 import { ThemeToggle } from '../UI/ThemeToggle';
 import { RemoteAccessWizard } from '../Wizards/RemoteAccessWizard';
+import { useSystem } from '../../context/SystemContext';
 
 const GlobalSettingsView: React.FC = () => {
     const [settings, setSettings] = useState<GlobalSettingsType | null>(null);
@@ -18,6 +19,7 @@ const GlobalSettingsView: React.FC = () => {
     const [showWizard, setShowWizard] = useState(false);
     const [systemStatus, setSystemStatus] = useState<{ protocol: string, sslStatus: string } | null>(null);
     const { addToast } = useToast();
+    const { refreshSettings } = useSystem();
 
     useEffect(() => {
         loadSettings();
@@ -71,6 +73,7 @@ const GlobalSettingsView: React.FC = () => {
             } else {
                 addToast('success', 'Settings', 'System configuration updated');
                 setInitialSettings(JSON.parse(JSON.stringify(settings)));
+                await refreshSettings();
             }
         } catch (e) {
             addToast('error', 'Settings', 'Failed to save changes');

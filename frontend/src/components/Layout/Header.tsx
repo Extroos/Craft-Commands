@@ -33,6 +33,7 @@ type NavItem = {
 import { useUser } from '../../context/UserContext';
 import { useServers } from '../../context/ServerContext';
 import { useNotifications } from '../../context/NotificationContext';
+import { useSystem } from '../../context/SystemContext';
 
 const formatDistanceToNow = (timestamp: number | string, options?: { addSuffix?: boolean }) => {
     const date = new Date(timestamp);
@@ -65,6 +66,7 @@ const Header: React.FC<HeaderProps> = ({
     const { servers } = useServers();
     const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
     const { user, theme } = useUser();
+    const { hostMode } = useSystem();
     
     // Derived Global Status
     const syncServers = servers.filter(s => s.includeInTotal !== false);
@@ -411,8 +413,8 @@ const Header: React.FC<HeaderProps> = ({
                             </AnimatePresence>
                         </div>
                         
-                        {/* Users Button (Admin Only) */}
-                        {onNavigateUsers && (user?.role === 'OWNER' || user?.role === 'ADMIN') && (
+                        {/* Users Button (Admin Only & Host Mode ONLY) */}
+                        {onNavigateUsers && hostMode && (user?.role === 'OWNER' || user?.role === 'ADMIN') && (
                              <button 
                                 onClick={onNavigateUsers}
                                 className="hidden lg:flex p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
@@ -479,8 +481,8 @@ const Header: React.FC<HeaderProps> = ({
                                             </button>
                                         )}
 
-                                        {/* Users Management (Owner/Admin) */}
-                                        {onNavigateUsers && (user?.role === 'OWNER' || user?.role === 'ADMIN') && (
+                                        {/* Users Management (Owner/Admin & Host Mode ONLY) */}
+                                        {onNavigateUsers && hostMode && (user?.role === 'OWNER' || user?.role === 'ADMIN') && (
                                             <button 
                                                 onClick={() => {
                                                     onNavigateUsers();

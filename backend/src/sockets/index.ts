@@ -2,8 +2,107 @@ import { Server, Socket } from 'socket.io';
 import { socketAuthMiddleware } from './middleware/authMiddleware';
 import { registerBroadcasters } from './broadcasters';
 import { handleCommand } from './handlers/commandHandler';
+import { presenceTracker } from './PresenceTracker';
+import { CollabSettings, UserRole, ChatMessage, ActivityEvent } from '../../../shared/types';
+import { serverRepository } from '../storage/ServerRepository';
+import { userRepository } from '../storage/UserRepository';
+import { systemSettingsService } from '../services/system/SystemSettingsService';
 
 export let io: Server;
+
+/** Default collab settings — everything visible to everyone */
+const DEFAULT_COLLAB: CollabSettings = {
+    activityFeed: { enabled: true, minRole: 'VIEWER' },
+    chat: { enabled: true, minRole: 'VIEWER', minSendRole: 'VIEWER' },
+    presence: { enabled: true, minRole: 'VIEWER' },
+    console: { readRole: 'VIEWER', writeRole: 'MANAGER' }
+};
+
+const ROLE_RANK: Record<UserRole, number> = { 'VIEWER': 0, 'MANAGER': 1, 'ADMIN': 2, 'OWNER': 3 };
+
+/** Check if a user's role meets the minimum requirement */
+const meetsRole = (userRole: UserRole, minRole: UserRole): boolean => {
+    return (ROLE_RANK[userRole] ?? 0) >= (ROLE_RANK[minRole] ?? 0);
+};
+
+/** Helper to get merged collab settings for a server */
+const getCollabSettings = (serverId: string): CollabSettings => {
+    const server = serverRepository.findById(serverId);
+    if (!server?.collabSettings) return { ...DEFAULT_COLLAB };
+    return {
+        activityFeed: { ...DEFAULT_COLLAB.activityFeed, ...server.collabSettings.activityFeed },
+        chat: { ...DEFAULT_COLLAB.chat, ...server.collabSettings.chat },
+        presence: { ...DEFAULT_COLLAB.presence, ...server.collabSettings.presence },
+        console: { ...DEFAULT_COLLAB.console, ...server.collabSettings.console },
+    };
+};
+
+// ===== In-Memory Chat History Buffer (per server, last 50 messages) =====
+const chatHistory: Map<string, ChatMessage[]> = new Map();
+const CHAT_HISTORY_LIMIT = 50;
+
+const pushChatHistory = (serverId: string, message: ChatMessage) => {
+    if (!chatHistory.has(serverId)) chatHistory.set(serverId, []);
+    const history = chatHistory.get(serverId)!;
+    history.push(message);
+    if (history.length > CHAT_HISTORY_LIMIT) history.shift();
+};
+
+const getChatHistory = (serverId: string): ChatMessage[] => {
+    return chatHistory.get(serverId) || [];
+};
+
+// ===== In-Memory Activity Buffer (per server, last 30 events) =====
+const activityHistory: Map<string, ActivityEvent[]> = new Map();
+const ACTIVITY_HISTORY_LIMIT = 30;
+
+const pushActivityHistory = (serverId: string, event: ActivityEvent) => {
+    if (!activityHistory.has(serverId)) activityHistory.set(serverId, []);
+    const history = activityHistory.get(serverId)!;
+    history.push(event);
+    if (history.length > ACTIVITY_HISTORY_LIMIT) history.shift();
+};
+
+const getActivityHistory = (serverId: string): ActivityEvent[] => {
+    return activityHistory.get(serverId) || [];
+};
+
+// ===== Rate Limiter (per user, max 5 messages per 3 seconds) =====
+const rateLimitMap: Map<string, number[]> = new Map();
+const RATE_LIMIT_WINDOW_MS = 3000;
+const RATE_LIMIT_MAX = 5;
+
+const isRateLimited = (userId: string): boolean => {
+    const now = Date.now();
+    if (!rateLimitMap.has(userId)) rateLimitMap.set(userId, []);
+    const timestamps = rateLimitMap.get(userId)!;
+    
+    // Remove old timestamps outside the window
+    while (timestamps.length > 0 && timestamps[0] < now - RATE_LIMIT_WINDOW_MS) {
+        timestamps.shift();
+    }
+
+    if (timestamps.length >= RATE_LIMIT_MAX) return true;
+    timestamps.push(now);
+    return false;
+};
+
+// ===== Sanitize message content =====
+const sanitize = (content: string): string => {
+    return content
+        .trim()
+        .substring(0, 500) // Hard length limit
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;'); // Prevent XSS in log viewers
+};
+
+// ===== Emit an activity event (persisted & broadcast) =====
+const emitActivity = (serverId: string, event: ActivityEvent) => {
+    pushActivityHistory(serverId, event);
+    io.to(`server:${serverId}`).emit('activity:new', event);
+};
+
+const makeActivityId = () => `act-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
 
 export const setupSocket = (socketIo: Server) => {
     io = socketIo;
@@ -19,13 +118,221 @@ export const setupSocket = (socketIo: Server) => {
         const user = (socket as any).user;
         if (user) {
             socket.join(`user:${user.id}`);
-            console.log(`[Socket] Client connected: ${socket.id} (User: ${user.id}) -> Joined room user:${user.id}`);
+            console.log(`[Socket] ✓ Connected: ${user.username} (${user.role}) [${socket.id}]`);
         } else {
-            console.log(`[Socket] Client connected: ${socket.id} (User: Anonymous)`);
+            console.log(`[Socket] ✗ Anonymous connection: ${socket.id}`);
+            return; // Don't register handlers for anonymous sockets
         }
 
+        // --- Server Room Management (Collaboration) ---
+
+        socket.on('server:join', ({ serverId, activeView }) => {
+            if (!serverId) return;
+
+            // Block collaboration if not in Host Mode
+            if (!systemSettingsService.isHostMode()) {
+                // Silently join the room for basic updates (console etc), but don't track presence
+                socket.join(`server:${serverId}`);
+                return;
+            }
+
+            const collab = getCollabSettings(serverId);
+
+            // Verify server exists
+            const server = serverRepository.findById(serverId);
+            if (!server) {
+                socket.emit('collab:error', { message: 'Server not found.' });
+                return;
+            }
+
+            // Only allow joining if role meets minimum
+            if (!meetsRole(user.role, collab.presence.minRole)) {
+                socket.emit('collab:error', { message: 'Insufficient permissions to view this server.' });
+                return;
+            }
+
+            socket.join(`server:${serverId}`);
+            
+            // Get latest user info for the presence list (Sync call)
+            const latestUser = userRepository.findById(user.id);
+            const finalUser = latestUser || user;
+            
+            presenceTracker.join(serverId, { 
+                id: finalUser.id, 
+                username: finalUser.username, 
+                role: finalUser.role, 
+                avatar: finalUser.avatarUrl 
+            }, socket.id, activeView || 'dashboard');
+            
+            console.log(`[Collab] ${finalUser.username} joined server:${serverId} (view: ${activeView || 'dashboard'})`);
+            
+            if (collab.presence.enabled) {
+                io.to(`server:${serverId}`).emit('presence:update', {
+                    serverId,
+                    users: presenceTracker.getPresence(serverId)
+                });
+            }
+
+            // Send chat history to this client (catch-up for late joiners)
+            const history = getChatHistory(serverId);
+            if (history.length > 0) {
+                socket.emit('chat:history', { serverId, messages: history });
+            }
+
+            // Send activity history to this client
+            const actHistory = getActivityHistory(serverId);
+            if (actHistory.length > 0) {
+                socket.emit('activity:history', { serverId, events: actHistory });
+            }
+
+            // Broadcast updated presence to the ENTIRE room
+            if (collab.presence.enabled) {
+                io.to(`server:${serverId}`).emit('presence:update', {
+                    serverId,
+                    users: presenceTracker.getPresence(serverId)
+                });
+            }
+
+            // Emit activity event: user joined
+            emitActivity(serverId, {
+                id: makeActivityId(),
+                serverId,
+                userId: user.id,
+                username: user.username,
+                action: 'USER_JOINED_PANEL',
+                detail: `${user.username} joined the panel`,
+                visibility: 'VIEWER',
+                timestamp: Date.now()
+            });
+        });
+
+        socket.on('server:leave', ({ serverId }) => {
+            if (!serverId) return;
+
+            socket.leave(`server:${serverId}`);
+            
+            if (!systemSettingsService.isHostMode()) return;
+
+            presenceTracker.leave(serverId, user.id);
+            console.log(`[Collab] ${user.username} left server:${serverId}`);
+
+            const collab = getCollabSettings(serverId);
+
+            if (collab.presence.enabled) {
+                io.to(`server:${serverId}`).emit('presence:update', {
+                    serverId,
+                    users: presenceTracker.getPresence(serverId)
+                });
+            }
+
+            emitActivity(serverId, {
+                id: makeActivityId(),
+                serverId,
+                userId: user.id,
+                username: user.username,
+                action: 'USER_LEFT_PANEL',
+                detail: `${user.username} left the panel`,
+                visibility: 'VIEWER',
+                timestamp: Date.now()
+            });
+        });
+
+        // Update active view (e.g., user switched from Console to Files)
+        socket.on('server:view', ({ serverId, activeView }) => {
+            if (!serverId || !systemSettingsService.isHostMode()) return;
+            presenceTracker.updateView(serverId, user.id, activeView);
+
+            const collab = getCollabSettings(serverId);
+            if (collab.presence.enabled) {
+                io.to(`server:${serverId}`).emit('presence:update', {
+                    serverId,
+                    users: presenceTracker.getPresence(serverId)
+                });
+            }
+        });
+
+        // --- Chat ---
+
+        socket.on('chat:send', ({ serverId, content }) => {
+            if (!serverId || !content?.trim()) return;
+
+            if (!systemSettingsService.isHostMode()) {
+                socket.emit('collab:error', { message: 'Chat is disabled in Solo Mode.' });
+                return;
+            }
+
+            const collab = getCollabSettings(serverId);
+            if (!collab.chat.enabled) {
+                socket.emit('collab:error', { message: 'Chat is disabled for this server.' });
+                return;
+            }
+            if (!meetsRole(user.role, collab.chat.minSendRole)) {
+                socket.emit('collab:error', { message: `Chat requires ${collab.chat.minSendRole} role or higher.` });
+                return;
+            }
+
+            // RATE LIMIT: prevent spam
+            if (isRateLimited(user.id)) {
+                socket.emit('collab:error', { message: 'Slow down! You are sending messages too fast.' });
+                return;
+            }
+
+            // Fetch latest user info from DB to ensure PFP changes are reflected instantly (Sync call)
+            const latestUser = userRepository.findById(user.id);
+            const finalUser = latestUser || user;
+
+            const message: ChatMessage = {
+                id: `chat-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`,
+                serverId,
+                userId: finalUser.id,
+                username: finalUser.username,
+                role: finalUser.role,
+                avatar: finalUser.avatarUrl,
+                content: sanitize(content),
+                timestamp: Date.now(),
+                type: 'message'
+            };
+
+            // Persist in history buffer
+            pushChatHistory(serverId, message);
+
+            // Broadcast to ALL users in the server room (including sender)
+            io.to(`server:${serverId}`).emit('chat:message', message);
+            console.log(`[Chat] ${finalUser.username} → server:${serverId}: "${content.trim().substring(0, 60)}"`);
+        });
+
+        socket.on('chat:typing', ({ serverId }) => {
+            if (!serverId || !systemSettingsService.isHostMode()) return;
+            // Broadcast to everyone EXCEPT the sender
+            socket.to(`server:${serverId}`).emit('chat:typing', {
+                userId: user.id,
+                username: user.username
+            });
+        });
+
+        // --- Disconnect Cleanup ---
+
         socket.on('disconnect', () => {
-            console.log(`[Socket] Client disconnected: ${socket.id}`);
+            console.log(`[Socket] ✗ Disconnected: ${user.username} [${socket.id}]`);
+
+            const affectedServers = presenceTracker.disconnectSocket(socket.id);
+            for (const serverId of affectedServers) {
+                io.to(`server:${serverId}`).emit('presence:update', {
+                    serverId,
+                    users: presenceTracker.getPresence(serverId)
+                });
+
+                emitActivity(serverId, {
+                    id: makeActivityId(),
+                    serverId,
+                    userId: user.id,
+                    username: user.username,
+                    action: 'USER_LEFT_PANEL',
+                    detail: `${user.username} disconnected`,
+                    visibility: 'VIEWER',
+                    timestamp: Date.now()
+                });
+            }
         });
 
         // Command handling - Secure

@@ -174,6 +174,7 @@ export interface ServerConfig {
         customWorldPaths?: string[]; // Optional: specify custom world folder names
     };
     needsRestart?: boolean; // Track if plugin/config changes require a reboot
+    collabSettings?: CollabSettings; // Per-server collaboration role gates
 }
 
 // --- Frontend Specific Types ---
@@ -222,6 +223,7 @@ export interface GlobalSettings {
         dockerEnabled?: boolean;
     };
     discordBot?: DiscordBotConfig;
+    version?: string; // Programmatic version from version.json
 }
 
 export interface Player {
@@ -468,4 +470,72 @@ export interface PluginUpdateInfo {
     latestVersion: string;
     source: PluginSource;
     sourceId: string;
+}
+
+// --- Collaboration Types ---
+
+export interface PresenceEntry {
+    userId: string;
+    username: string;
+    role: UserRole;
+    avatar?: string;
+    joinedAt: number;
+    activeView: string;   // 'console' | 'dashboard' | 'files' | 'plugins' | etc.
+}
+
+export type ActivityAction =
+    | 'SERVER_START' | 'SERVER_STOP' | 'SERVER_RESTART'
+    | 'COMMAND_SENT' | 'PLUGIN_INSTALLED' | 'PLUGIN_REMOVED' | 'PLUGIN_TOGGLED'
+    | 'BACKUP_CREATED' | 'BACKUP_RESTORED'
+    | 'CONFIG_CHANGED' | 'FILE_EDITED' | 'PLAYER_KICKED' | 'PLAYER_BANNED'
+    | 'USER_JOINED_PANEL' | 'USER_LEFT_PANEL'
+    | 'SCHEDULE_CREATED' | 'SCHEDULE_DELETED';
+
+export interface ActivityEvent {
+    id: string;
+    serverId: string;
+    userId: string;
+    username: string;
+    action: ActivityAction;
+    detail: string;
+    metadata?: Record<string, any>;
+    visibility: UserRole;   // Minimum role to see this event
+    timestamp: number;
+}
+
+export interface ChatMessage {
+    id: string;
+    serverId: string;
+    userId: string;
+    username: string;
+    role: UserRole;
+    content: string;
+    avatar?: string;
+    timestamp: number;
+    type: 'message' | 'system';
+}
+
+/**
+ * Per-server collaboration settings.
+ * The OWNER/ADMIN can configure minimum role requirements for each feature.
+ * This is stored on the ServerConfig for per-server control.
+ */
+export interface CollabSettings {
+    activityFeed: {
+        enabled: boolean;
+        minRole: UserRole;       // Who can SEE the activity feed (default: 'VIEWER')
+    };
+    chat: {
+        enabled: boolean;
+        minRole: UserRole;       // Who can READ chat (default: 'VIEWER')
+        minSendRole: UserRole;   // Who can SEND messages (default: 'MANAGER')
+    };
+    presence: {
+        enabled: boolean;
+        minRole: UserRole;       // Who can see presence indicators (default: 'VIEWER')
+    };
+    console: {
+        readRole: UserRole;      // Who can READ console output (default: 'VIEWER')
+        writeRole: UserRole;     // Who can SEND commands (default: 'MANAGER')
+    };
 }

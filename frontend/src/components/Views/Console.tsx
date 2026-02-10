@@ -7,6 +7,9 @@ import { API } from '../../services/api';
 import { socketService } from '../../services/socket';
 import { useToast } from '../UI/Toast';
 import { useUser } from '../../context/UserContext';
+import { useCollaboration } from '../../context/CollaborationContext';
+import PresenceBar from '../Collab/PresenceBar';
+import { UserRole } from '@shared/types';
 
 interface ConsoleProps {
     serverId: string;
@@ -34,6 +37,18 @@ const Console: React.FC<ConsoleProps> = ({ serverId }) => {
     const endRef = useRef<HTMLDivElement>(null);
     const { addToast } = useToast();
     const { user, theme } = useUser(); // Access global user prefs
+    const { updateActiveView } = useCollaboration();
+
+    // Role-based access: check if user can write commands
+    const ROLE_RANK: Record<UserRole, number> = { 'VIEWER': 0, 'MANAGER': 1, 'ADMIN': 2, 'OWNER': 3 };
+    const collab = server?.collabSettings;
+    const writeRole = collab?.console?.writeRole || 'MANAGER';
+    const canWrite = (ROLE_RANK[user?.role || 'VIEWER'] ?? 0) >= (ROLE_RANK[writeRole] ?? 0);
+
+    // Notify collab context that we're on console
+    React.useEffect(() => {
+        if (serverId) updateActiveView(serverId, 'console');
+    }, [serverId, updateActiveView]);
 
     // Socket.io & Initial Fetch (Logs Only)
     useEffect(() => {
@@ -152,6 +167,8 @@ const Console: React.FC<ConsoleProps> = ({ serverId }) => {
                         </div>
                         <span className="text-xs font-mono text-muted-foreground opacity-70">/home/container/server.jar</span>
                     </div>
+                    {/* Presence Bar - who else is watching */}
+                    <PresenceBar serverId={serverId} />
                 </div>
 
                 {/* Power Control Group */}
@@ -270,6 +287,7 @@ const Console: React.FC<ConsoleProps> = ({ serverId }) => {
 
             {/* Command Input */}
             <div className="bg-muted/30 p-3 border-t border-border z-10">
+                {canWrite ? (
                 <form onSubmit={handleSend} className="flex gap-2 items-center bg-[#09090b] border border-border rounded-lg px-3 py-2.5 focus-within:ring-1 focus-within:ring-primary/50 focus-within:border-primary/50 transition-all shadow-inner">
                     <span className={`font-bold font-mono animate-pulse ${theme.text}`}>{'>'}</span>
                     <input
@@ -288,6 +306,12 @@ const Console: React.FC<ConsoleProps> = ({ serverId }) => {
                         <ArrowRight size={14} />
                     </button>
                 </form>
+                ) : (
+                <div className="flex items-center justify-center gap-2 py-2 text-xs text-muted-foreground/50 bg-muted/10 rounded-lg border border-border/30">
+                    <TerminalIcon size={12} />
+                    <span>Read-only console — your role ({user?.role}) does not allow sending commands.</span>
+                </div>
+                )}
             </div>
         </div>
     );

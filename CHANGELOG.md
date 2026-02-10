@@ -2,6 +2,18 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.9.1] - 2026-02-10 - Collab Hardening & Host Mode Sync
+
+### Added
+
+- **Host Mode**: A master switch to toggle multi-user collaboration features (Chat, Presence, User Management) and enforce Solo Mode.
+- **Centralized Versioning**: Programmatic linkage using `version.json` as the single source of truth for the entire application.
+
+### Improved
+
+- **OperatorChat**: Synchronized user profiles (PFPs) and removed automated system tips for a cleaner experience.
+- **Update Logic**: Hardened version comparison in `UpdateService` to prevent stale notification alerts.
+
 ## [1.9.0] - 2026-02-10 - Plugin Marketplace Stabilization
 
 ### Added

@@ -31,10 +31,14 @@ import { ThemeProvider } from './context/ThemeContext';
 
 import { ServerProvider, useServers } from './context/ServerContext';
 import { NotificationProvider } from './context/NotificationContext';
+import { CollaborationProvider } from './context/CollaborationContext';
+import { SystemProvider, useSystem } from './context/SystemContext';
+import OperatorChat from './components/Collab/OperatorChat';
 
 const AppContent: React.FC = () => {
     const { user, isAuthenticated, logout: authLogout, isLoading: authLoading } = useUser();
     const { servers, currentServer, setCurrentServerById, isLoading: serversLoading } = useServers();
+    const { version } = useSystem();
     
     // Initialize State - ALWAYS start at LOGIN for fresh console starts
     const [appState, setAppState] = useState<AppState>('LOGIN');
@@ -350,7 +354,7 @@ const AppContent: React.FC = () => {
                 <footer className="py-6 border-t border-border/40 mt-auto">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center text-[11px] font-medium tracking-tight text-muted-foreground/30">
                         <div className="flex items-center gap-2 italic">
-                            CraftCommand Protocol v1.9.0
+                            CraftCommand Protocol v{version}
                         </div>
                         <div>Licensed under MIT &copy; 2026 Extroos</div>
                     </div>
@@ -377,17 +381,28 @@ const App: React.FC = () => {
         <ErrorBoundary>
             <UserProvider>
                 <ThemeProvider>
-                    <ServerProvider>
-                        <ToastProvider>
-                            <NotificationProvider>
-                                <AppContent />
-                            </NotificationProvider>
-                        </ToastProvider>
-                    </ServerProvider>
+                    <SystemProvider>
+                        <ServerProvider>
+                            <ToastProvider>
+                                <NotificationProvider>
+                                    <CollaborationProvider>
+                                        <AppContent />
+                                        <OperatorChatWrapper />
+                                    </CollaborationProvider>
+                                </NotificationProvider>
+                            </ToastProvider>
+                        </ServerProvider>
+                    </SystemProvider>
                 </ThemeProvider>
             </UserProvider>
         </ErrorBoundary>
     );
+};
+
+const OperatorChatWrapper = () => {
+    const { hostMode } = useSystem();
+    if (!hostMode) return null;
+    return <OperatorChat />;
 };
 
 export default App;

@@ -121,8 +121,11 @@ class UpdateService {
 
     /**
      * Categorizes the jump level between two semver strings.
+     * Only returns a level if latest is strictly greater than current.
      */
     private getUpdateLevel(current: string, latest: string): UpdateLevel | null {
+        if (this.compareVersions(latest, current) <= 0) return null;
+
         const cParts = current.replace(/^v/, '').split('.').map(n => parseInt(n || '0', 10));
         const lParts = latest.replace(/^v/, '').split('.').map(n => parseInt(n || '0', 10));
 
@@ -130,7 +133,7 @@ class UpdateService {
         if (lParts[1] > cParts[1]) return 'MINOR';
         if (lParts[2] > cParts[2]) return 'PATCH';
         
-        return null; // Equal or Lower
+        return null;
     }
 
     private async fetchRemoteVersion(retries: number): Promise<VersionInfo> {
