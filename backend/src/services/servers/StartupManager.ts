@@ -99,6 +99,9 @@ export class StartupManager {
             dockerImage,
             SERVER_PORT: server.port
         });
+
+        // 6. Clear Restart Flag (Hardening)
+        saveServerCallback({ ...server, needsRestart: false });
     }
 
 

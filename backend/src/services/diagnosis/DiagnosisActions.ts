@@ -5,6 +5,7 @@ import { startupManager } from '../servers/StartupManager';
 import { FileSystemManager } from '../files/FileSystemManager';
 import { ServerConfig } from '../../../../shared/types';
 import si from 'systeminformation';
+import path from 'path';
 
 /**
  * Proactive Healing Actions
@@ -138,5 +139,42 @@ export const DiagnosisActions = {
         logger.warn(`[DiagnosisAction] Purging ghost process for ${server.id} on port ${server.port}`);
         const { NetUtils } = require('../../utils/NetUtils'); // Dynamic import to avoid circular dep risks
         await NetUtils.killProcessOnPort(server.port);
+    },
+
+    /**
+     * Creates the plugins directory for Paper/Spigot servers
+     */
+    createPluginFolder: async (fs: FileSystemManager) => {
+        logger.info(`[DiagnosisAction] Creating missing plugins directory`);
+        await fs.createDirectory('plugins');
+    },
+
+    /**
+     * Removes duplicate versions of the same plugin, keeping the most recent one
+     */
+    removeDuplicatePlugins: async (fs: FileSystemManager, files: string[]) => {
+        logger.info(`[DiagnosisAction] Resolving duplicate plugins: ${files.join(', ')}`);
+        
+        // Find the "best" one to keep (latest modification time)
+        let latestFile = files[0];
+        let latestTime = 0;
+
+        for (const file of files) {
+            try {
+                const stats = await fs.getStats(path.join('plugins', file));
+                if (stats.mtimeMs > latestTime) {
+                    latestTime = stats.mtimeMs;
+                    latestFile = file;
+                }
+            } catch (e) {}
+        }
+
+        // Delete the others
+        for (const file of files) {
+            if (file !== latestFile) {
+                logger.info(`[DiagnosisAction] Removing duplicate plugin version: ${file}`);
+                await fs.deletePath(path.join('plugins', file));
+            }
+        }
     }
 };

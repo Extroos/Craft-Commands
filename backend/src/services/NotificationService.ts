@@ -1,5 +1,5 @@
 import { notificationRepository } from '../storage/NotificationRepository';
-import { Notification, NotificationType } from '@shared/types';
+import { Notification, NotificationType } from '../../../shared/types';
 import { io } from '../sockets';
 
 export class NotificationService {

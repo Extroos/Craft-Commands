@@ -326,7 +326,7 @@ const AppContent: React.FC = () => {
                                     )}
                                     {activeTab === 'CONSOLE' && <Console serverId={currentServer.id} />}
                                     {activeTab === 'FILES' && <FileManager serverId={currentServer.id} />}
-                                    {activeTab === 'PLUGINS' && <PluginManager />}
+                                    {activeTab === 'PLUGINS' && <PluginManager serverId={currentServer.id} />}
                                     {activeTab === 'SCHEDULES' && <ScheduleManager serverId={currentServer.id} />}
                                     {activeTab === 'BACKUPS' && <BackupManager serverId={currentServer.id} />}
                                     {activeTab === 'PLAYERS' && <PlayerManager serverId={currentServer.id} />}
@@ -350,7 +350,7 @@ const AppContent: React.FC = () => {
                 <footer className="py-6 border-t border-border/40 mt-auto">
                     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex justify-between items-center text-[11px] font-medium tracking-tight text-muted-foreground/30">
                         <div className="flex items-center gap-2 italic">
-                            CraftCommand Protocol v1.8.0
+                            CraftCommand Protocol v1.9.0
                         </div>
                         <div>Licensed under MIT &copy; 2026 Extroos</div>
                     </div>

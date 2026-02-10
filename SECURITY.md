@@ -6,9 +6,9 @@ The following versions of CraftCommand are currently supported with security upd
 
 | Version | Supported                   |
 | ------- | --------------------------- |
-| 1.8.x   | :white_check_mark: (Stable) |
-| 1.7.x   | :warning: (Legacy)          |
-| 1.6.x   | :x:                         |
+| 1.9.x   | :white_check_mark: (Stable) |
+| 1.8.x   | :warning: (Legacy)          |
+| 1.7.x   | :x:                         |
 
 ## Reporting a Vulnerability
 
@@ -23,9 +23,9 @@ Security is taken seriously in CraftCommand. If you discover a security vulnerab
 3. I'll do my best to respond as quickly as possible and work on a fix.
 4. Once patched, you'll be publicly credited for the discovery (unless you prefer to remain anonymous).
 
-## Security Architecture (v1.8.0 Stable)
+## Security Architecture (v1.9.0 Stable)
 
-CraftCommand v1.8.0 introduces several critical security hardening measures:
+CraftCommand v1.9.0 introduces several critical security hardening measures:
 
 - **Granular Permissions & Overrides**: A 3-state permission engine (Inherited, Allow, Deny) with explicit server-level and global system-wide overrides.
 - **Hardened Hierarchical Guards**: Strict enforcement of role hierarchy (Owner > Admin > Manager > Viewer) that prevents staff from elevating their own or others' rights beyond their assigned scope.

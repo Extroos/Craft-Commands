@@ -1,11 +1,37 @@
 import { systemSettingsService } from './SystemSettingsService';
 import { auditService } from './AuditService';
-import axios from 'axios';
 import { logger } from '../../utils/logger';
+import { ConnectivityProvider } from '../networking/ConnectivityProvider';
+import { DirectProvider } from '../networking/DirectProvider';
+import { ConnectionStatus, ConnectivityMethod } from '../../../../shared/types';
 
 export class RemoteAccessService {
     
-    private isDetectingIP = false;
+    private providers: Map<ConnectivityMethod, ConnectivityProvider> = new Map();
+    private activeProvider: ConnectivityProvider | null = null;
+
+    constructor() {
+        // Register available providers
+        this.registerProvider(new DirectProvider());
+        // Future: this.registerProvider(new VpnProvider());
+        // Future: this.registerProvider(new CloudflareProvider());
+    }
+
+    public async initialize(): Promise<void> {
+        const settings = systemSettingsService.getSettings();
+        if (settings.app.remoteAccess?.enabled && settings.app.remoteAccess.method) {
+            try {
+                await this.enable(settings.app.remoteAccess.method);
+                logger.success(`[RemoteAccess] Restored connection via ${settings.app.remoteAccess.method}`);
+            } catch (e: any) {
+                logger.error(`[RemoteAccess] Failed to restore connection: ${e.message}`);
+            }
+        }
+    }
+
+    private registerProvider(provider: ConnectivityProvider) {
+        this.providers.set(provider.id, provider);
+    }
 
     /**
      * Returns the safe bind address for the HTTP/Socket server.
@@ -18,66 +44,63 @@ export class RemoteAccessService {
         return '127.0.0.1';
     }
 
-    async detectPublicIP(): Promise<string | null> {
-        if (this.isDetectingIP) return null;
-        this.isDetectingIP = true;
-
-        try {
-            logger.info('[RemoteAccess] Detecting public IP address...');
-            const response = await axios.get('https://api.ipify.org?format=json', { timeout: 5000 });
-            const ip = response.data.ip;
-            
-            if (ip) {
-                logger.success(`[RemoteAccess] Detected Public IP: ${ip}`);
-                const settings = systemSettingsService.getSettings();
-                systemSettingsService.updateSettings({
-                    app: {
-                        remoteAccess: {
-                            ...settings.app.remoteAccess,
-                            enabled: settings.app.remoteAccess?.enabled || false,
-                            externalIP: ip
-                        }
-                    }
-                });
-                return ip;
-            }
-        } catch (e: any) {
-            logger.error(`[RemoteAccess] IP Detection failed: ${e.message}`);
-        } finally {
-            this.isDetectingIP = false;
-        }
-        return null;
-    }
-
     async validateSafetyGates(): Promise<void> {
+        // Placeholder for security checks (e.g. check if default password is changed)
         return;
     }
 
-    enable(method: 'vpn' | 'proxy' | 'direct' | 'cloudflare'): void {
-        this.validateSafetyGates();
+    async enable(method: ConnectivityMethod): Promise<boolean> {
+        await this.validateSafetyGates();
 
-        systemSettingsService.updateSettings({
-            app: {
-                remoteAccess: {
-                    enabled: true,
-                    method,
-                    externalIP: undefined // Reset to trigger detection
-                }
-            }
-        });
-
-        if (method === 'direct') {
-            this.detectPublicIP(); // Background trigger
+        const provider = this.providers.get(method);
+        if (!provider) {
+            throw new Error(`Provider for method '${method}' not found.`);
         }
 
-        auditService.log('SYSTEM', 'SYSTEM_SETTINGS_UPDATE', 'system', { remoteAccess: true, method }, '127.0.0.1');
+        logger.info(`[RemoteAccess] Enabling remote access via ${method}...`);
+
+        try {
+            // Disconnect current if different
+            if (this.activeProvider && this.activeProvider.id !== method) {
+                await this.activeProvider.disconnect();
+            }
+
+            const status = await provider.connect();
+            this.activeProvider = provider;
+
+            // Update persistent settings
+            systemSettingsService.updateSettings({
+                app: {
+                    remoteAccess: {
+                        enabled: true,
+                        method,
+                        externalIP: status.externalIP
+                    }
+                }
+            });
+
+            auditService.log('SYSTEM', 'SYSTEM_SETTINGS_UPDATE', 'system', { remoteAccess: true, method }, '127.0.0.1');
+            return true;
+        } catch (e: any) {
+            logger.error(`[RemoteAccess] Failed to enable ${method}: ${e.message}`);
+            // Rollback settings if needed?
+            throw e;
+        }
     }
 
-    disable(): void {
+    async disable(): Promise<void> {
+        logger.info('[RemoteAccess] Disabling remote access...');
+        
+        if (this.activeProvider) {
+            await this.activeProvider.disconnect();
+            this.activeProvider = null;
+        }
+
         systemSettingsService.updateSettings({
             app: {
                 remoteAccess: {
-                    enabled: false
+                    enabled: false,
+                    externalIP: undefined
                 }
             }
         });
@@ -85,20 +108,21 @@ export class RemoteAccessService {
         auditService.log('SYSTEM', 'SYSTEM_SETTINGS_UPDATE', 'system', { remoteAccess: false }, '127.0.0.1');
     }
 
-    getStatus() {
+    async getStatus(): Promise<ConnectionStatus> {
         const settings = systemSettingsService.getSettings();
-        
-        // If direct is enabled but we don't have an IP yet, trigger detection in background
-        if (settings.app.remoteAccess?.enabled && 
-            settings.app.remoteAccess?.method === 'direct' && 
-            !settings.app.remoteAccess?.externalIP && 
-            !this.isDetectingIP) {
-            this.detectPublicIP();
+        const enabled = settings.app.remoteAccess?.enabled || false;
+        const method = settings.app.remoteAccess?.method;
+
+        // If we have an active provider, ask it for real-time status
+        if (this.activeProvider) {
+            return this.activeProvider.getStatus();
         }
 
+        // If enabled but no active provider, we might be in a transitional state or just booted.
+        // We'll return the settings state as a fallback.
         return {
-            enabled: settings.app.remoteAccess?.enabled || false,
-            method: settings.app.remoteAccess?.method,
+            enabled,
+            method,
             externalIP: settings.app.remoteAccess?.externalIP,
             bindAddress: this.getBindAddress()
         };

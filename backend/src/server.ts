@@ -105,6 +105,7 @@ const startup = async () => {
     // Initialize Integrations & Auto-Healing
     try {
         await discordService.initialize();
+        await remoteAccessService.initialize();
         autoHealingService.initialize();
         updateService.initialize();
     } catch (e: any) {

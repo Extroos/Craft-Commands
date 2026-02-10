@@ -44,6 +44,12 @@ export class AutoHealingManager {
                 case 'PURGE_GHOST':
                     await DiagnosisActions.purgeGhost(server);
                     break;
+                case 'CREATE_PLUGIN_FOLDER':
+                    await DiagnosisActions.createPluginFolder(fsManager);
+                    break;
+                case 'REMOVE_DUPLICATE_PLUGIN':
+                    await DiagnosisActions.removeDuplicatePlugins(fsManager, payload.files);
+                    break;
                 default:
                     throw new Error(`Unknown auto-heal action type: ${actionType}`);
             }

@@ -116,13 +116,13 @@ router.get('/remote-access/status', verifyToken, requireRole(['OWNER', 'ADMIN'])
 });
 
 // Enable Remote Access
-router.post('/remote-access/enable', verifyToken, requirePermission('system.remote_access.manage'), (req, res) => {
+router.post('/remote-access/enable', verifyToken, requirePermission('system.remote_access.manage'), async (req, res) => {
     const { method } = req.body;
     try {
         if (!['vpn', 'proxy', 'direct', 'cloudflare'].includes(method)) {
             throw new Error('Invalid method');
         }
-        remoteAccessService.enable(method);
+        await remoteAccessService.enable(method);
         res.json({ success: true });
     } catch (e: any) {
         res.status(400).json({ error: e.message });
@@ -144,9 +144,9 @@ router.get('/audit', verifyToken, requireRole(['OWNER', 'ADMIN']), (req, res) =>
 });
 
 // Disable Remote Access
-router.post('/remote-access/disable', verifyToken, requirePermission('system.remote_access.manage'), (req, res) => {
+router.post('/remote-access/disable', verifyToken, requirePermission('system.remote_access.manage'), async (req, res) => {
     try {
-        remoteAccessService.disable();
+        await remoteAccessService.disable();
         res.json({ success: true });
     } catch (e: any) {
         res.status(500).json({ error: e.message });

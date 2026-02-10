@@ -1,26 +1,14 @@
 import { StorageProvider } from './StorageProvider';
-import { GenericJsonProvider } from './JsonRepository';
-import { SqliteProvider } from './SqliteProvider';
+import { StorageFactory } from './StorageFactory';
 import { ServerConfig } from '../../../shared/types';
-import { systemSettingsService } from '../services/system/SystemSettingsService';
+// import { systemSettingsService } from '../services/system/SystemSettingsService'; // No longer needed directly here
 
 export class ServerRepository implements StorageProvider<ServerConfig> {
     private provider: StorageProvider<ServerConfig>;
 
     constructor() {
-        const settings = systemSettingsService.getSettings();
-        // Check for provider setting, default to JSON if not present or 'json'
-        // We might need to add 'storageProvider' to SystemSettings first, or read generic 'app' config.
-        // For now, let's look for a flag or default to JSON.
-        const useSqlite = (settings.app as any).storageProvider === 'sqlite';
-
-        if (useSqlite) {
-            console.log('[ServerRepository] Using SQLite Storage');
-            this.provider = new SqliteProvider<ServerConfig>('servers.db', 'servers', 'servers.json');
-        } else {
-            console.log('[ServerRepository] Using JSON Storage');
-            this.provider = new GenericJsonProvider<ServerConfig>('servers.json');
-        }
+        this.provider = StorageFactory.get<ServerConfig>('servers');
+        this.init(); // Auto-initialize for SQLite migration/tables
     }
 
     init() { return this.provider.init(); }

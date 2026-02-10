@@ -1,12 +1,11 @@
 {
-  "version": "1.8.1",
-  "title": "CraftCommand: Notification System Update",
+  "version": "1.9.0",
+  "title": "CraftCommand: Plugin Marketplace Stabilization",
   "notes": [
-    "New: Integrated Notification System with persistent storage and real-time alerts.",
-    "New: Added Notification Bell to the header with unread badge and dropdown list.",
-    "New: Update checks now trigger system-wide notifications instead of dashboard banners.",
-    "New: Auto-pruning of old notifications to keep the system clean.",
-    "Optimization: Improved API performance for fetching notifications with pagination.",
-    "Fix: Resolved duplicate import issues in Header component."
+    "Stable: Plugin Marketplace is now fully operational with Modrinth, Spiget, and Hangar integration.",
+    "Fixed: Plugin button visibility in header and missing API routes.",
+    "Improved: Notification system hardened and performance-optimized.",
+    "Improved: Version consistency across all project modules.",
+    "Security: Standardized JWT secrets for development stability."
   ]
 }

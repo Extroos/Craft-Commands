@@ -6,6 +6,7 @@ import { ConfigReader } from '../../utils/ConfigReader';
 import { NetUtils } from '../../utils/NetUtils';
 import { serverConfigService } from '../servers/ServerConfigService';
 import path from 'path';
+import { PluginRules } from './PluginDiagnosisRules';
 
 export const EulaRule: DiagnosisRule = {
     id: 'eula_check',
@@ -720,5 +721,6 @@ export const CoreRules = [
     MissingJarRule, BadConfigRule, PermissionRule, InvalidIpRule,
     DependencyMissingRule, DuplicateModRule, MixinConflictRule, TickingEntityRule,
     WatchdogRule, WorldCorruptionRule, AikarsFlagsRule, TelemetryRule, NetworkOfflineRule,
-    ConfigSyncRule, NativeCrashRule, NetworkProtocolRule, PacketTooBigRule
+    ConfigSyncRule, NativeCrashRule, NetworkProtocolRule, PacketTooBigRule,
+    ...PluginRules
 ];

@@ -2,6 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.9.0] - 2026-02-10 - Plugin Marketplace Stabilization
+
+### Added
+
+- **Plugin Marketplace**: Fully operational aggregate search (Modrinth, Spiget, Hangar) and automated installation.
+- **Enhanced Notifications**: Real-time error alerts and persistent system notifications.
+- **Stable Auth**: Hardened JWT verification and consistent developer secrets.
+
+### Fixed
+
+- **UI Consistency**: Resolved missing "Plugins" tab in the header.
+- **API Reliability**: Fixed 401 Unauthorized loops and malformed response crashes in the frontend.
+
 ## [1.8.1] - 2026-02-10 - Integrated Notification System
 
 ### Added

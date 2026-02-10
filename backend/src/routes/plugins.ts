@@ -1,0 +1,144 @@
+import express from 'express';
+import { pluginService } from '../services/plugins/PluginService';
+import { verifyToken, requirePermission } from '../middleware/authMiddleware';
+import { PluginSearchQuery, PluginSource } from '../../../shared/types';
+
+const router = express.Router();
+
+// All routes require authentication
+router.use(verifyToken);
+
+// ===================
+// Marketplace Search
+// ===================
+
+// GET /api/plugins/search?query=X&source=modrinth&page=1&sort=downloads&serverId=xxx
+router.get('/search', requirePermission('server.view'), async (req, res) => {
+    try {
+        const serverId = req.query.serverId as string;
+        if (!serverId) {
+            return res.status(400).json({ error: 'serverId query param is required' });
+        }
+
+        const query: PluginSearchQuery = {
+            query: (req.query.query as string) || '',
+            category: req.query.category as string,
+            source: req.query.source as PluginSource | undefined,
+            gameVersion: req.query.gameVersion as string,
+            page: parseInt(req.query.page as string) || 1,
+            limit: parseInt(req.query.limit as string) || 20,
+            sort: (req.query.sort as PluginSearchQuery['sort']) || 'downloads',
+        };
+
+        const result = await pluginService.search(query, serverId);
+        res.json(result);
+    } catch (err: any) {
+        console.error('[PluginRoutes] Search error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ===================
+// Installed Plugins
+// ===================
+
+// GET /api/plugins/servers/:id - List installed plugins for a server
+router.get('/servers/:id', requirePermission('server.view'), async (req, res) => {
+    try {
+        const plugins = pluginService.getInstalled(req.params.id);
+        res.json(plugins);
+    } catch (err: any) {
+        console.error('[PluginRoutes] List error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/plugins/servers/:id/scan - Scan plugins dir and reconcile with DB
+router.get('/servers/:id/scan', requirePermission('server.files.read'), async (req, res) => {
+    try {
+        const plugins = await pluginService.scanInstalled(req.params.id);
+        res.json(plugins);
+    } catch (err: any) {
+        console.error('[PluginRoutes] Scan error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/plugins/servers/:id/install - Install a plugin from marketplace
+router.post('/servers/:id/install', requirePermission('server.files.write'), async (req, res) => {
+    try {
+        const { sourceId, source } = req.body;
+        if (!sourceId || !source) {
+            return res.status(400).json({ error: 'sourceId and source are required' });
+        }
+
+        const validSources = ['modrinth', 'spiget', 'hangar'];
+        if (!validSources.includes(source)) {
+            return res.status(400).json({ error: `Invalid source. Must be one of: ${validSources.join(', ')}` });
+        }
+
+        const plugin = await pluginService.install(req.params.id, sourceId, source as PluginSource);
+        res.json(plugin);
+    } catch (err: any) {
+        console.error('[PluginRoutes] Install error:', err.message);
+        const msg = err.message || 'Install failed';
+        
+        if (msg.includes('not found') || msg.includes('not exist')) {
+            return res.status(404).json({ error: msg });
+        }
+        if (msg.includes('not support') || msg.includes('Invalid')) {
+            return res.status(400).json({ error: msg });
+        }
+        // Download/marketplace failures — use 502 (Bad Gateway) to indicate upstream issue
+        if (msg.includes('download') || msg.includes('marketplace') || msg.includes('compatible')) {
+            return res.status(502).json({ error: msg });
+        }
+        res.status(500).json({ error: msg });
+    }
+});
+
+// DELETE /api/plugins/servers/:id/:pluginId - Uninstall a plugin
+router.delete('/servers/:id/:pluginId', requirePermission('server.files.write'), async (req, res) => {
+    try {
+        await pluginService.uninstall(req.params.id, req.params.pluginId);
+        res.json({ success: true });
+    } catch (err: any) {
+        console.error('[PluginRoutes] Uninstall error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// PATCH /api/plugins/servers/:id/:pluginId/toggle - Enable/disable plugin
+router.patch('/servers/:id/:pluginId/toggle', requirePermission('server.files.write'), async (req, res) => {
+    try {
+        const plugin = await pluginService.toggle(req.params.id, req.params.pluginId);
+        res.json(plugin);
+    } catch (err: any) {
+        console.error('[PluginRoutes] Toggle error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/plugins/servers/:id/:pluginId/update - Update plugin to latest
+router.post('/servers/:id/:pluginId/update', requirePermission('server.files.write'), async (req, res) => {
+    try {
+        const plugin = await pluginService.update(req.params.id, req.params.pluginId);
+        res.json(plugin);
+    } catch (err: any) {
+        console.error('[PluginRoutes] Update error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/plugins/servers/:id/updates - Check for available updates
+router.get('/servers/:id/updates', requirePermission('server.view'), async (req, res) => {
+    try {
+        const updates = await pluginService.checkUpdates(req.params.id);
+        res.json(updates);
+    } catch (err: any) {
+        console.error('[PluginRoutes] Update check error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+export default router;

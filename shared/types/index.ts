@@ -173,6 +173,7 @@ export interface ServerConfig {
         worldOnly: boolean; // Default: false (backup everything)
         customWorldPaths?: string[]; // Optional: specify custom world folder names
     };
+    needsRestart?: boolean; // Track if plugin/config changes require a reboot
 }
 
 // --- Frontend Specific Types ---
@@ -368,7 +369,7 @@ export interface DiagnosisResult {
     explanation: string;
     recommendation: string;
     action?: {
-        type: 'UPDATE_CONFIG' | 'SWITCH_JAVA' | 'AGREE_EULA' | 'INSTALL_DEPENDENCY' | 'REPAIR_PROPERTIES' | 'CLEANUP_TELEMETRY' | 'OPTIMIZE_ARGUMENTS' | 'PURGE_GHOST' | 'RESOLVE_PORT_CONFLICT';
+        type: 'UPDATE_CONFIG' | 'SWITCH_JAVA' | 'AGREE_EULA' | 'INSTALL_DEPENDENCY' | 'REPAIR_PROPERTIES' | 'CLEANUP_TELEMETRY' | 'OPTIMIZE_ARGUMENTS' | 'PURGE_GHOST' | 'RESOLVE_PORT_CONFLICT' | 'REMOVE_DUPLICATE_PLUGIN' | 'CREATE_PLUGIN_FOLDER';
         payload: any;
         autoHeal?: boolean; // If true, AutoHealingService can execute this automatically
     };
@@ -392,4 +393,79 @@ export interface Notification {
     metadata?: any;
     link?: string;
     dismissible?: boolean; // If false, cannot be deleted by user
+}
+
+export type ConnectivityMethod = 'vpn' | 'proxy' | 'direct' | 'cloudflare';
+
+export interface ConnectionStatus {
+    enabled: boolean;
+    method?: ConnectivityMethod;
+    externalIP?: string;
+    bindAddress: string;
+    error?: string;
+    details?: any; // Provider specific details (e.g. tunnel URL)
+}
+
+// --- Plugin Marketplace Types ---
+
+export type PluginSource = 'spiget' | 'modrinth' | 'hangar' | 'manual';
+export type PluginPlatform = 'bukkit' | 'spigot' | 'paper' | 'purpur' | 'forge' | 'fabric';
+
+export interface MarketplacePlugin {
+    sourceId: string;       // ID on the external platform
+    source: PluginSource;
+    name: string;
+    slug: string;
+    description: string;
+    author: string;
+    iconUrl?: string;
+    downloads: number;
+    rating?: number;
+    category: string;
+    platforms: PluginPlatform[];
+    latestVersion: string;
+    latestGameVersions: string[];
+    externalUrl?: string;
+    updatedAt: number;
+}
+
+export interface InstalledPlugin {
+    id: string;             // Internal UUID
+    serverId: string;
+    sourceId?: string;
+    source: PluginSource;
+    name: string;
+    fileName: string;       // e.g. "EssentialsX-2.20.1.jar"
+    version: string;
+    installedAt: number;
+    updatedAt?: number;
+    autoUpdate: boolean;    // Opt-in only, never forced
+    enabled: boolean;       // false = renamed to .jar.disabled
+}
+
+export interface PluginSearchQuery {
+    query: string;
+    category?: string;
+    platform?: PluginPlatform;
+    gameVersion?: string;
+    source?: PluginSource;
+    page?: number;
+    limit?: number;
+    sort?: 'downloads' | 'updated' | 'name' | 'rating';
+}
+
+export interface PluginSearchResult {
+    plugins: MarketplacePlugin[];
+    total: number;
+    page: number;
+    pages: number;
+}
+
+export interface PluginUpdateInfo {
+    pluginId: string;
+    name: string;
+    currentVersion: string;
+    latestVersion: string;
+    source: PluginSource;
+    sourceId: string;
 }

@@ -1,11 +1,16 @@
 import { Router } from 'express';
 import { notificationService } from '../services/NotificationService';
+import { verifyToken } from '../middleware/authMiddleware';
 
 export const notificationRoutes = Router();
+
+// Apply verifyToken to all routes
+notificationRoutes.use(verifyToken);
 
 // Get all notifications for the current user
 notificationRoutes.get('/', (req, res) => {
     const user = (req as any).user;
+    console.log(`[NotificationRoute] GET / called. req.user:`, user?.id || 'null/undefined');
     if (!user) return res.status(401).json({ error: 'Unauthorized' });
     
     const limit = parseInt(req.query.limit as string) || 50;

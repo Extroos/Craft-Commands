@@ -123,6 +123,7 @@ const Header: React.FC<HeaderProps> = ({
             type: 'dropdown',
             children: [
                 { id: 'PLAYERS', label: 'Players', icon: <Users size={16} /> },
+                { id: 'PLUGINS', label: 'Plugins', icon: <Package size={16} /> },
                 { id: 'SCHEDULES', label: 'Schedules', icon: <CalendarClock size={16} /> },
                 { id: 'BACKUPS', label: 'Backups', icon: <ArchiveRestore size={16} /> },
                 { id: 'INTEGRATIONS', label: 'Integrations', icon: <Webhook size={16} /> },

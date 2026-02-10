@@ -39,7 +39,12 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
             // Better to update API service. For now let's type-cast or assume we updated API.ts
             // Actually I should update API.ts first. But I can implement this and then update API.ts.
             const data = await API.getNotifications(); 
-            setNotifications(data);
+            if (Array.isArray(data)) {
+                setNotifications(data);
+            } else {
+                console.error('API.getNotifications returned non-array data:', data);
+                setNotifications([]);
+            }
         } catch (e) {
             console.error('Failed to fetch notifications', e);
         } finally {
@@ -119,7 +124,7 @@ export const NotificationProvider: React.FC<{ children: React.ReactNode }> = ({ 
     return (
         <NotificationContext.Provider value={{
             notifications,
-            unreadCount: notifications.filter(n => !n.read).length,
+            unreadCount: (Array.isArray(notifications) ? notifications : []).filter(n => n && typeof n === 'object' && !n.read).length,
             isLoading,
             markAsRead,
             markAllAsRead,

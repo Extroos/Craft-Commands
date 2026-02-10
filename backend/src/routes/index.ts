@@ -8,6 +8,7 @@ import templateRoutes from './templates';
 import settingsRoutes from './settings';
 import assetsRoutes from './assets';
 import { notificationRoutes } from './notifications';
+import pluginRoutes from './plugins';
 
 
 
@@ -28,10 +29,12 @@ export const setupRoutes = (app: Express) => {
     app.use('/api/assets', assetsRoutes);
     console.log('[Routes] Registering /api/notifications');
     app.use('/api/notifications', notificationRoutes);
+    console.log('[Routes] Registering /api/plugins');
+    app.use('/api/plugins', pluginRoutes);
     
     // Status Route
     app.get('/api/status', (req, res) => {
-        res.json({ status: 'online', version: '1.7.5', app: 'CraftCommand' });
+        res.json({ status: 'online', version: '1.9.0', app: 'CraftCommand' });
     });
 };
 

@@ -1,23 +1,14 @@
 import { StorageProvider } from './StorageProvider';
-import { GenericJsonProvider } from './JsonRepository';
-import { SqliteProvider } from './SqliteProvider';
+import { StorageFactory } from './StorageFactory';
 import { UserProfile } from '../../../shared/types';
-import { systemSettingsService } from '../services/system/SystemSettingsService';
+// import { systemSettingsService } from '../services/system/SystemSettingsService';
 
 export class UserRepository implements StorageProvider<UserProfile> {
     private provider: StorageProvider<UserProfile>;
 
     constructor() {
-        const settings = systemSettingsService.getSettings();
-        const useSqlite = (settings.app as any).storageProvider === 'sqlite';
-
-        if (useSqlite) {
-            console.log('[UserRepository] Using SQLite Storage');
-            this.provider = new SqliteProvider<UserProfile>('users.db', 'users', 'users.json');
-        } else {
-            console.log('[UserRepository] Using JSON Storage');
-            this.provider = new GenericJsonProvider<UserProfile>('users.json');
-        }
+        this.provider = StorageFactory.get<UserProfile>('users');
+        this.init(); // Auto-initialize for SQLite migration/tables
     }
 
     init() { return this.provider.init(); }

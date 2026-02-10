@@ -110,4 +110,8 @@ export class FileSystemManager {
             archive.finalize();
         });
     }
+
+    async getStats(relativePath: string): Promise<fs.Stats> {
+        return fs.stat(this.resolvePath(relativePath));
+    }
 }

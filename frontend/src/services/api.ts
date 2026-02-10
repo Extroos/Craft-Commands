@@ -5,7 +5,12 @@ import {
     UserProfile, 
     GlobalSettings,
     ServerTemplate,
-    ImportAnalysis
+    ImportAnalysis,
+    PluginSearchQuery,
+    PluginSearchResult,
+    InstalledPlugin,
+    PluginUpdateInfo,
+    PluginSource
 } from '@shared/types';
 
 const API_URL = '/api';
@@ -13,6 +18,9 @@ const API_URL = '/api';
 class ApiService {
     private getAuthHeader() {
         const token = localStorage.getItem('cc_token');
+        if (!token) {
+            console.warn('[ApiService] No cc_token found in localStorage!');
+        }
         return token ? { 'Authorization': `Bearer ${token}` } : {};
     }
 
@@ -611,6 +619,10 @@ class ApiService {
         const res = await fetch(`${API_URL}/notifications?${query.toString()}`, {
             headers: this.getAuthHeader()
         });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || 'Failed to fetch notifications');
+        }
         return res.json();
     }
 
@@ -801,6 +813,87 @@ class ApiService {
             throw new Error(data.error || 'Failed to upload background');
         }
         
+        return res.json();
+    }
+
+    // --- Plugin Marketplace ---
+
+    async searchPlugins(query: PluginSearchQuery, serverId: string): Promise<PluginSearchResult> {
+        const params = new URLSearchParams({
+            serverId,
+            query: query.query || '',
+            page: String(query.page || 1),
+            limit: String(query.limit || 20),
+            sort: query.sort || 'downloads',
+        });
+        if (query.category) params.set('category', query.category);
+        if (query.source) params.set('source', query.source);
+        if (query.gameVersion) params.set('gameVersion', query.gameVersion);
+
+        const res = await fetch(`${API_URL}/plugins/search?${params}`, {
+            headers: this.getAuthHeader()
+        });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Search failed'); }
+        return res.json();
+    }
+
+    async getInstalledPlugins(serverId: string): Promise<InstalledPlugin[]> {
+        const res = await fetch(`${API_URL}/plugins/servers/${serverId}`, {
+            headers: this.getAuthHeader()
+        });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Failed to fetch plugins'); }
+        return res.json();
+    }
+
+    async installPlugin(serverId: string, sourceId: string, source: PluginSource): Promise<InstalledPlugin> {
+        const res = await fetch(`${API_URL}/plugins/servers/${serverId}/install`, {
+            method: 'POST',
+            headers: { ...this.getAuthHeader(), 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sourceId, source })
+        });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Install failed'); }
+        return res.json();
+    }
+
+    async uninstallPlugin(serverId: string, pluginId: string): Promise<void> {
+        const res = await fetch(`${API_URL}/plugins/servers/${serverId}/${pluginId}`, {
+            method: 'DELETE',
+            headers: this.getAuthHeader()
+        });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Uninstall failed'); }
+    }
+
+    async togglePlugin(serverId: string, pluginId: string): Promise<InstalledPlugin> {
+        const res = await fetch(`${API_URL}/plugins/servers/${serverId}/${pluginId}/toggle`, {
+            method: 'PATCH',
+            headers: this.getAuthHeader()
+        });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Toggle failed'); }
+        return res.json();
+    }
+
+    async updatePlugin(serverId: string, pluginId: string): Promise<InstalledPlugin> {
+        const res = await fetch(`${API_URL}/plugins/servers/${serverId}/${pluginId}/update`, {
+            method: 'POST',
+            headers: this.getAuthHeader()
+        });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Update failed'); }
+        return res.json();
+    }
+
+    async checkPluginUpdates(serverId: string): Promise<PluginUpdateInfo[]> {
+        const res = await fetch(`${API_URL}/plugins/servers/${serverId}/updates`, {
+            headers: this.getAuthHeader()
+        });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Update check failed'); }
+        return res.json();
+    }
+
+    async scanPlugins(serverId: string): Promise<InstalledPlugin[]> {
+        const res = await fetch(`${API_URL}/plugins/servers/${serverId}/scan`, {
+            headers: this.getAuthHeader()
+        });
+        if (!res.ok) { const d = await res.json(); throw new Error(d.error || 'Scan failed'); }
         return res.json();
     }
 }

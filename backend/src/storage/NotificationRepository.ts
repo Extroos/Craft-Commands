@@ -1,17 +1,28 @@
-import { JsonRepository } from './JsonRepository';
-import { Notification } from '@shared/types';
+import { StorageProvider } from './StorageProvider';
+import { StorageFactory } from './StorageFactory';
+import { Notification } from '../../../shared/types';
 
-class NotificationRepository extends JsonRepository<Notification> {
+class NotificationRepository implements StorageProvider<Notification> {
+    private provider: StorageProvider<Notification>;
+
     constructor() {
-        super('notifications.json');
+        this.provider = StorageFactory.get<Notification>('notifications');
+        this.init(); // Auto-initialize for SQLite migration/tables
     }
+
+    init() { return this.provider.init(); }
+    findAll() { return this.provider.findAll(); }
+    findById(id: string) { return this.provider.findById(id); }
+    findOne(criteria: Partial<Notification>) { return this.provider.findOne(criteria); }
+    create(item: Notification) { return this.provider.create(item); }
+    update(id: string, updates: Partial<Notification>) { return this.provider.update(id, updates); }
 
     public delete(id: string): boolean {
         const notification = this.findById(id);
         if (notification && notification.dismissible === false) {
             return false; // Cannot delete
         }
-        return super.delete(id);
+        return this.provider.delete(id);
     }
 
     public getForUser(userId: string, options: { limit?: number, unreadOnly?: boolean } = {}): Notification[] {

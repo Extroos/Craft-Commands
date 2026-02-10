@@ -8,6 +8,8 @@ import { Permission } from '../../../shared/types';
 export const verifyToken = (req: Request, res: Response, next: NextFunction) => {
     // Check if Host Mode is disabled (Personal Mode)
     const settings = systemSettingsService.getSettings();
+    console.log(`[AuthMiddleware] verifyToken for ${req.path} (HostMode: ${settings.app.hostMode})`);
+    
     if (!settings.app.hostMode) {
         // Personal Mode: Bypass authentication, create a mock admin user
         (req as any).user = {
@@ -16,28 +18,44 @@ export const verifyToken = (req: Request, res: Response, next: NextFunction) => 
             role: 'OWNER',
             username: 'Personal'
         };
+        console.log('[AuthMiddleware] Personal Mode: Mock user attached');
         return next();
     }
 
     // Host Mode: Require authentication
     const authHeader = req.headers['authorization'];
-    if (!authHeader) return res.status(401).json({ error: 'Access denied' });
+    if (!authHeader) {
+        console.warn(`[AuthMiddleware] Missing Authorization header for ${req.path}`);
+        return res.status(401).json({ error: 'Access denied: Missing Authorization header' });
+    }
 
     // Format: "Bearer token"
-    const token = authHeader.split(' ')[1];
+    const parts = authHeader.split(' ');
+    if (parts.length !== 2 || parts[0] !== 'Bearer') {
+        console.warn(`[AuthMiddleware] Malformed Authorization header for ${req.path}: ${authHeader}`);
+        return res.status(401).json({ error: 'Access denied: Malformed header' });
+    }
+
+    const token = parts[1];
     
     // Verify JWT
     try {
         const secret = process.env.JWT_SECRET || 'dev-secret-do-not-use-in-prod';
         const decoded = jwt.verify(token, secret) as any;
         
+        console.log(`[AuthMiddleware] Token verified for user ID: ${decoded.id}`);
+
         const user = authService.getUser(decoded.id);
-        if (!user) return res.status(401).json({ error: 'Invalid token: User not found' });
+        if (!user) {
+            console.error(`[AuthMiddleware] User not found for ID ${decoded.id} in storage.`);
+            return res.status(401).json({ error: 'Invalid token: User not found' });
+        }
 
         // Attach user to request
         (req as any).user = user;
         next();
-    } catch (e) {
+    } catch (e: any) {
+        console.error(`[AuthMiddleware] JWT Verification Failed: ${e.message}`);
         res.status(401).json({ error: 'Invalid or expired token' });
     }
 };
