@@ -378,3 +378,18 @@ export interface DiagnosisResult {
     };
     timestamp: number;
 }
+
+export type NotificationType = 'INFO' | 'SUCCESS' | 'WARNING' | 'ERROR';
+
+export interface Notification {
+    id: string;
+    userId: string; // 'ALL', 'ADMIN', or UUID
+    type: NotificationType;
+    title: string;
+    message: string;
+    read: boolean;
+    createdAt: number;
+    metadata?: any;
+    link?: string;
+    dismissible?: boolean; // If false, cannot be deleted by user
+}

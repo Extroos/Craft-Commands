@@ -24,6 +24,7 @@ import { fileWatcherService } from './services/files/FileWatcherService';
 import { discordService } from './services/integrations/DiscordService';
 import { systemSettingsService } from './services/system/SystemSettingsService';
 import { autoHealingService } from './services/servers/AutoHealingService';
+import { updateService } from './services/system/UpdateService';
 import os from 'os';
 
 import { sslUtils } from './utils/ssl';
@@ -105,6 +106,7 @@ const startup = async () => {
     try {
         await discordService.initialize();
         autoHealingService.initialize();
+        updateService.initialize();
     } catch (e: any) {
         logger.error(`Service initialization failed: ${e.message}`);
     }

@@ -602,6 +602,39 @@ class ApiService {
         return { success: true, user: data.user, token: data.token };
     }
 
+    // --- Notifications ---
+
+    async getNotifications(limit: number = 50, unreadOnly?: boolean): Promise<any[]> {
+        const query = new URLSearchParams({ limit: limit.toString() });
+        if (unreadOnly) query.append('unreadOnly', 'true');
+
+        const res = await fetch(`${API_URL}/notifications?${query.toString()}`, {
+            headers: this.getAuthHeader()
+        });
+        return res.json();
+    }
+
+    async markNotificationRead(id: string): Promise<void> {
+        await fetch(`${API_URL}/notifications/${id}/read`, {
+            method: 'POST',
+            headers: this.getAuthHeader()
+        });
+    }
+
+    async markAllNotificationsRead(): Promise<void> {
+        await fetch(`${API_URL}/notifications/read-all`, {
+            method: 'POST',
+            headers: this.getAuthHeader()
+        });
+    }
+
+    async deleteNotification(id: string): Promise<void> {
+        await fetch(`${API_URL}/notifications/${id}`, {
+            method: 'DELETE',
+            headers: this.getAuthHeader()
+        });
+    }
+
     async getSystemCache(): Promise<{ java: { size: number, count: number }, temp: { size: number, count: number } }> {
         const res = await fetch(`${API_URL}/system/cache`, {
             headers: this.getAuthHeader()

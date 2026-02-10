@@ -3,7 +3,10 @@ import { socketAuthMiddleware } from './middleware/authMiddleware';
 import { registerBroadcasters } from './broadcasters';
 import { handleCommand } from './handlers/commandHandler';
 
-export const setupSocket = (io: Server) => {
+export let io: Server;
+
+export const setupSocket = (socketIo: Server) => {
+    io = socketIo;
     
     // 1. Setup Global Broadcasters (Service -> IO)
     registerBroadcasters(io);
@@ -14,7 +17,12 @@ export const setupSocket = (io: Server) => {
     // 3. Connection Handling
     io.on('connection', (socket: Socket) => {
         const user = (socket as any).user;
-        console.log(`[Socket] Client connected: ${socket.id} (User: ${user?.id})`);
+        if (user) {
+            socket.join(`user:${user.id}`);
+            console.log(`[Socket] Client connected: ${socket.id} (User: ${user.id}) -> Joined room user:${user.id}`);
+        } else {
+            console.log(`[Socket] Client connected: ${socket.id} (User: Anonymous)`);
+        }
 
         socket.on('disconnect', () => {
             console.log(`[Socket] Client disconnected: ${socket.id}`);

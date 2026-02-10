@@ -3,7 +3,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { 
     LayoutDashboard, TerminalSquare, BookOpenCheck, Command, ChevronLeft, 
     FolderOpen, Users, Package, ArchiveRestore, CalendarClock, Settings, 
-    ChevronDown, Layers, ServerCog, LogOut, Webhook, User, Shield 
+    ChevronDown, Layers, ServerCog, LogOut, Webhook, User, Shield, Bell, Check, Trash2, X
 } from 'lucide-react';
 import { TabView, UserProfile, ServerConfig } from '@shared/types';
 
@@ -32,6 +32,30 @@ type NavItem = {
 
 import { useUser } from '../../context/UserContext';
 import { useServers } from '../../context/ServerContext';
+import { useNotifications } from '../../context/NotificationContext';
+
+const formatDistanceToNow = (timestamp: number | string, options?: { addSuffix?: boolean }) => {
+    const date = new Date(timestamp);
+    const now = new Date();
+    const seconds = Math.floor((now.getTime() - date.getTime()) / 1000);
+    
+    let interval = seconds / 31536000;
+    if (interval > 1) return Math.floor(interval) + " years" + (options?.addSuffix ? " ago" : "");
+    
+    interval = seconds / 2592000;
+    if (interval > 1) return Math.floor(interval) + " months" + (options?.addSuffix ? " ago" : "");
+    
+    interval = seconds / 86400;
+    if (interval > 1) return Math.floor(interval) + " days" + (options?.addSuffix ? " ago" : "");
+    
+    interval = seconds / 3600;
+    if (interval > 1) return Math.floor(interval) + " hours" + (options?.addSuffix ? " ago" : "");
+    
+    interval = seconds / 60;
+    if (interval > 1) return Math.floor(interval) + " minutes" + (options?.addSuffix ? " ago" : "");
+    
+    return Math.floor(seconds) + " seconds" + (options?.addSuffix ? " ago" : "");
+};
 
 const Header: React.FC<HeaderProps> = ({ 
     activeTab, setActiveTab, onBackToServerList, onLogout, 
@@ -39,6 +63,7 @@ const Header: React.FC<HeaderProps> = ({
     currentServer 
 }) => {
     const { servers } = useServers();
+    const { notifications, unreadCount, markAsRead, markAllAsRead, deleteNotification } = useNotifications();
     const { user, theme } = useUser();
     
     // Derived Global Status
@@ -52,12 +77,17 @@ const Header: React.FC<HeaderProps> = ({
 
     const navRef = useRef<HTMLDivElement>(null);
     const userRef = useRef<HTMLDivElement>(null);
+    const notificationRef = useRef<HTMLDivElement>(null);
+    const [notificationDropdown, setNotificationDropdown] = useState(false);
 
     // Close dropdowns when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
             if (navRef.current && !navRef.current.contains(event.target as Node)) {
                 setOpenDropdown(null);
+            }
+            if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
+                setNotificationDropdown(false);
             }
             if (userRef.current && !userRef.current.contains(event.target as Node)) {
                 setUserDropdown(false);
@@ -281,6 +311,104 @@ const Header: React.FC<HeaderProps> = ({
                     <div className="flex items-center gap-4 shrink-0">
                         {getStatusUI()}
                         <div className="h-4 w-[1px] bg-border/60 hidden lg:block"></div>
+
+                        {/* Notifications */}
+                        <div className="relative" ref={notificationRef}>
+                            <button
+                                onClick={() => setNotificationDropdown(!notificationDropdown)}
+                                className="relative p-2 rounded-lg text-muted-foreground hover:text-primary hover:bg-primary/10 transition-colors"
+                                title="Notifications"
+                            >
+                                <Bell size={18} />
+                                {unreadCount > 0 && (
+                                    <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-rose-500 ring-2 ring-background"></span>
+                                )}
+                            </button>
+
+                            <AnimatePresence>
+                                {notificationDropdown && (
+                                    <motion.div
+                                        initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                                        exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                                        transition={{ duration: 0.15 }}
+                                        className="absolute top-full right-0 mt-2 w-80 md:w-96 bg-card border border-border rounded-lg shadow-2xl z-50 flex flex-col max-h-[80vh]"
+                                    >
+                                        <div className="p-3 border-b border-border flex justify-between items-center bg-muted/30 rounded-t-lg">
+                                            <h3 className="font-semibold text-sm">Notifications</h3>
+                                            {unreadCount > 0 && (
+                                                <button 
+                                                    onClick={() => markAllAsRead()}
+                                                    className="text-xs text-primary hover:text-primary/80 transition-colors flex items-center gap-1"
+                                                >
+                                                    <Check size={12} /> Mark all read
+                                                </button>
+                                            )}
+                                        </div>
+                                        
+                                        <div className="overflow-y-auto flex-1 p-1">
+                                            {notifications.length === 0 ? (
+                                                <div className="py-8 text-center text-muted-foreground">
+                                                    <Bell className="mx-auto mb-2 opacity-20" size={32} />
+                                                    <p className="text-xs">No notifications</p>
+                                                </div>
+                                            ) : (
+                                                <div className="flex flex-col gap-1">
+                                                    {notifications.map(notification => (
+                                                        <div 
+                                                            key={notification.id} 
+                                                            className={`
+                                                                relative group p-3 rounded-lg border transition-all duration-200
+                                                                ${notification.read ? 'bg-background border-transparent hover:bg-secondary/50' : 'bg-primary/5 border-primary/20 hover:bg-primary/10'}
+                                                            `}
+                                                        >
+                                                            <div className="flex justify-between items-start gap-2">
+                                                                <div className="flex-1 min-w-0">
+                                                                    <div className="flex items-center gap-2 mb-0.5">
+                                                                        <h4 className={`text-sm font-medium truncate ${notification.read ? 'text-muted-foreground' : 'text-foreground'}`}>
+                                                                            {notification.title}
+                                                                        </h4>
+                                                                        {!notification.read && (
+                                                                            <span className="w-1.5 h-1.5 rounded-full bg-primary shrink-0"></span>
+                                                                        )}
+                                                                    </div>
+                                                                    <p className="text-xs text-muted-foreground break-words line-clamp-3">
+                                                                        {notification.message}
+                                                                    </p>
+                                                                    <p className="text-[10px] text-muted-foreground/60 mt-1.5 font-mono">
+                                                                        {formatDistanceToNow(notification.createdAt, { addSuffix: true })}
+                                                                    </p>
+                                                                </div>
+                                                                <div className="flex flex-col gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                                    {!notification.read && (
+                                                                        <button 
+                                                                            onClick={(e) => { e.stopPropagation(); markAsRead(notification.id); }}
+                                                                            className="p-1 hover:bg-background rounded text-primary"
+                                                                            title="Mark as read"
+                                                                        >
+                                                                            <Check size={12} />
+                                                                        </button>
+                                                                    )}
+                                                                    {notification.dismissible !== false && (
+                                                                        <button 
+                                                                            onClick={(e) => { e.stopPropagation(); deleteNotification(notification.id); }}
+                                                                            className="p-1 hover:bg-background rounded text-rose-500"
+                                                                            title="Delete"
+                                                                        >
+                                                                            <Trash2 size={12} />
+                                                                        </button>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    ))}
+                                                </div>
+                                            )}
+                                        </div>
+                                    </motion.div>
+                                )}
+                            </AnimatePresence>
+                        </div>
                         
                         {/* Users Button (Admin Only) */}
                         {onNavigateUsers && (user?.role === 'OWNER' || user?.role === 'ADMIN') && (

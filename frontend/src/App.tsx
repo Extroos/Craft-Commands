@@ -30,6 +30,7 @@ import { UserProvider, useUser } from './context/UserContext';
 import { ThemeProvider } from './context/ThemeContext';
 
 import { ServerProvider, useServers } from './context/ServerContext';
+import { NotificationProvider } from './context/NotificationContext';
 
 const AppContent: React.FC = () => {
     const { user, isAuthenticated, logout: authLogout, isLoading: authLoading } = useUser();
@@ -378,7 +379,9 @@ const App: React.FC = () => {
                 <ThemeProvider>
                     <ServerProvider>
                         <ToastProvider>
-                            <AppContent />
+                            <NotificationProvider>
+                                <AppContent />
+                            </NotificationProvider>
                         </ToastProvider>
                     </ServerProvider>
                 </ThemeProvider>

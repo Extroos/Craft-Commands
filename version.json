@@ -1,12 +1,12 @@
 {
-  "version": "1.8.0",
-  "title": "CraftCommand",
+  "version": "1.8.1",
+  "title": "CraftCommand: Notification System Update",
   "notes": [
-    "Quality Mode (Beta): Unlock custom backgrounds with glassmorphism, blur effects, and smooth animations.",
-    "Adaptive Dashboard: New 'Micro Mode' for stats cards and fully responsive grid layout with drag-and-drop persistence.",
-    "Smart Terminal: Resizable console with adaptive single-line prompt and scanline effects.",
-    "System Diagnosis: Integrated crash analysis, auto-fix suggestions, and stability health checks.",
-    "User Experience: Refined typography, accent borders, and new 'Beta' indicators for experimental features.",
-    "Safety Core: Enhanced layout stability and backend protection against invalid port/RAM configurations."
+    "New: Integrated Notification System with persistent storage and real-time alerts.",
+    "New: Added Notification Bell to the header with unread badge and dropdown list.",
+    "New: Update checks now trigger system-wide notifications instead of dashboard banners.",
+    "New: Auto-pruning of old notifications to keep the system clean.",
+    "Optimization: Improved API performance for fetching notifications with pagination.",
+    "Fix: Resolved duplicate import issues in Header component."
   ]
 }

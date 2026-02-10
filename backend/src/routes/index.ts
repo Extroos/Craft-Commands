@@ -7,6 +7,7 @@ import modpackRoutes from './modpacks';
 import templateRoutes from './templates';
 import settingsRoutes from './settings';
 import assetsRoutes from './assets';
+import { notificationRoutes } from './notifications';
 
 
 
@@ -25,6 +26,8 @@ export const setupRoutes = (app: Express) => {
     app.use('/api/settings', settingsRoutes);
     console.log('[Routes] Registering /api/assets (V2)');
     app.use('/api/assets', assetsRoutes);
+    console.log('[Routes] Registering /api/notifications');
+    app.use('/api/notifications', notificationRoutes);
     
     // Status Route
     app.get('/api/status', (req, res) => {

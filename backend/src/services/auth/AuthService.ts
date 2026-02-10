@@ -241,9 +241,19 @@ export class AuthService {
         if (finalUpdates.username && !finalUpdates.avatarUrl) {
             finalUpdates.avatarUrl = `https://mc-heads.net/avatar/${finalUpdates.username}/64`;
         }
+        
+        // Fix: Auto-update avatar if Minecraft IGN changes
+        if (finalUpdates.minecraftIgn) {
+             console.log(`[AuthService] Updating IGN for ${id} to ${finalUpdates.minecraftIgn}`);
+             finalUpdates.avatarUrl = `https://minotar.net/helm/${finalUpdates.minecraftIgn}/128.png`;
+             console.log(`[AuthService] New Avatar URL: ${finalUpdates.avatarUrl}`);
+        }
 
         const updated = userRepository.update(id, finalUpdates);
-        if (!updated) throw new Error('User update failed');
+        if (!updated) {
+            console.error(`[AuthService] Failed to update user ${id}`);
+            throw new Error('User update failed');
+        }
         
         const { passwordHash, ...safeUser } = updated;
         return safeUser;

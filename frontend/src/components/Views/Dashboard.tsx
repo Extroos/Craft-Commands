@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Power, RotateCcw, Ban, Activity, Cpu, Network, Users, Copy, Check, Disc, Zap, Clock, Terminal, AlertTriangle, Info, X, Download } from 'lucide-react';
+import { Power, RotateCcw, Ban, Activity, Cpu, Network, Users, Copy, Check, Disc, Clock, Terminal, AlertTriangle, Info, X, Download, Zap } from 'lucide-react';
 import { ServerStatus, ServerConfig, TabView } from '@shared/types';
 
 import { API } from '../../services/api';
@@ -116,8 +116,6 @@ const Dashboard: React.FC<DashboardProps> = ({ serverId }) => {
     const [showCrashModal, setShowCrashModal] = useState(false);
     
     // Update Logic
-    const [updateInfo, setUpdateInfo] = useState<any>(null);
-    const [dismissedVersion, setDismissedVersion] = useState(() => localStorage.getItem('craft_commands_dismissed_update'));
 
     // Layout & Container State
     const { width, containerRef, mounted } = useContainerWidth({ measureBeforeMount: true });
@@ -191,30 +189,9 @@ const Dashboard: React.FC<DashboardProps> = ({ serverId }) => {
         }
     };
 
-    useEffect(() => {
-        const check = async () => {
-            if (user?.role !== 'OWNER' && user?.role !== 'ADMIN') return;
-            
-            try {
-                const info = await API.checkUpdates();
-                if (info.available && info.latestVersion !== dismissedVersion) {
-                    setUpdateInfo(info);
-                }
-            } catch (e) {
-                // Silent fail
-            }
-        };
-        check();
-    }, [dismissedVersion, user?.role]);
 
     // Java download status is now managed by ServerContext
 
-    const handleDismissUpdate = () => {
-        if (!updateInfo) return;
-        localStorage.setItem('craft_commands_dismissed_update', updateInfo.latestVersion);
-        setDismissedVersion(updateInfo.latestVersion);
-        setUpdateInfo(null);
-    };
 
     // Get current stats from global context
     const stats = allStats[serverId] || { cpu: 0, memory: 0, uptime: 0, latency: 0, players: 0, playerList: [], isRealOnline: false, tps: "0.00", pid: 0 };
@@ -388,87 +365,6 @@ const Dashboard: React.FC<DashboardProps> = ({ serverId }) => {
             className={`max-w-[1600px] mx-auto space-y-8 pb-12 relative ${user?.preferences.visualQuality ? 'quality-animate-in' : ''}`}
         >
              {/* Update Banner */}
-             <AnimatePresence>
-                {updateInfo && (
-                    <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className={`border rounded-lg overflow-hidden mb-6 ${
-                            updateInfo.incompatible || updateInfo.priority === 'CRITICAL' 
-                            ? 'bg-rose-500/5 border-rose-500/20' 
-                            : 'bg-primary/5 border-primary/20'
-                        }`}
-                    >
-                        <div className="p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-                            <div className="flex items-start gap-4">
-                                <div className={`p-2.5 rounded-lg shrink-0 ${
-                                    updateInfo.incompatible || updateInfo.priority === 'CRITICAL' || updateInfo.breaking
-                                    ? 'bg-rose-500/10 text-rose-500' 
-                                    : 'bg-primary/10 text-primary'
-                                }`}>
-                                    {updateInfo.breaking || updateInfo.priority === 'CRITICAL' ? <AlertTriangle size={20} /> : <Zap size={20} />}
-                                </div>
-                                <div>
-                                    <div className="flex flex-wrap items-center gap-2 mb-1">
-                                        <h3 className="text-sm font-bold text-foreground">
-                                            {updateInfo.level === 'MAJOR' ? 'Different Level Detected' : 
-                                             updateInfo.level === 'MINOR' ? 'Big Update Available' : 'Update Available'}: v{updateInfo.latestVersion}
-                                        </h3>
-                                        
-                                        {updateInfo.priority && (
-                                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded border uppercase tracking-widest ${
-                                                updateInfo.priority === 'CRITICAL' ? 'bg-rose-600 border-rose-500 text-white' :
-                                                updateInfo.priority === 'HIGH' ? 'bg-amber-500/10 border-amber-500/20 text-amber-500' :
-                                                'bg-primary/10 border-primary/20 text-primary'
-                                            }`}>
-                                                {updateInfo.priority}
-                                            </span>
-                                        )}
-                                    </div>
-                                    
-                                    <div className="space-y-1">
-                                        <p className="text-xs text-muted-foreground">
-                                            {updateInfo.title || 'A new version of CraftCommand is available for deployment.'}
-                                        </p>
-                                        
-                                        {updateInfo.breaking && (
-                                            <p className="text-[11px] font-bold text-rose-500 flex items-center gap-1.5">
-                                                <AlertTriangle size={12} />
-                                                This update contains breaking protocol changes.
-                                            </p>
-                                        )}
-                                        
-                                        {updateInfo.incompatible && (
-                                            <p className="text-[11px] font-bold text-rose-600 bg-rose-500/10 px-2 py-0.5 rounded inline-block">
-                                                Incompatible Node.js version detected. Please update Node to proceed.
-                                            </p>
-                                        )}
-                                    </div>
-                                </div>
-                            </div>
-                            
-                            <div className="flex items-center gap-3 self-end sm:self-auto">
-                                <a 
-                                    href="https://github.com/extroos/craftcommand" 
-                                    target="_blank" 
-                                    rel="noreferrer"
-                                    className="px-4 py-2 bg-foreground text-background text-[11px] font-bold rounded hover:opacity-90 transition-opacity uppercase tracking-wider"
-                                >
-                                    View Protocol
-                                </a>
-                                <button 
-                                    onClick={handleDismissUpdate}
-                                    className="p-2 text-muted-foreground hover:text-foreground rounded-lg hover:bg-black/20"
-                                    title="Dismiss Notification"
-                                >
-                                    <X size={18} />
-                                </button>
-                            </div>
-                        </div>
-                    </motion.div>
-                )}
-             </AnimatePresence>
 
              {/* Crash Report Modal */}
              <AnimatePresence>

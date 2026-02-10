@@ -4,6 +4,7 @@ import path from 'path';
 import { authService } from '../auth/AuthService';
 import { discordService } from '../integrations/DiscordService';
 import { logger } from '../../utils/logger';
+import { notificationService } from '../NotificationService';
 
 const REMOTE_VERSION_URL = 'https://raw.githubusercontent.com/Extroos/Craft-Commands/main/version.json';
 
@@ -41,6 +42,21 @@ class UpdateService {
     private lastCheck = 0;
     private cachedResult: UpdateCheckResult | null = null;
     private CHECK_INTERVAL = 24 * 60 * 60 * 1000; // 24 hours
+    private checkIntervalId: NodeJS.Timeout | null = null;
+
+    public initialize() {
+        // Initial check after short delay to allow server to fully boot
+        setTimeout(() => {
+            this.checkForUpdates();
+        }, 60000); // 1 minute delay
+
+        // Periodic check
+        this.checkIntervalId = setInterval(() => {
+            this.checkForUpdates();
+        }, this.CHECK_INTERVAL);
+        
+        logger.info('[UpdateService] Initialized with auto-check enabled.');
+    }
 
     /**
      * Checks for application updates with advanced infrastructure awareness.
@@ -165,6 +181,44 @@ class UpdateService {
             this.saveInternalState({ lastNotifiedVersion: result.latestVersion });
         } catch (e) {
             logger.error(`[UpdateService] Notification failed: ${e}`);
+        }
+        
+        try {
+             // System Notification (In-App)
+             // Send to ALL users or just admins? Since we don't have easy role-based targeting yet in NotificationService 
+             // (it takes userId or 'ALL'), we might spam normal users.
+             // But usually updates are relevant to everyone or at least the owner.
+             // Ideally we'd have `notificationService.create('ADMINS', ...)` or broadcast to a role room.
+             // For now, let's send to 'ALL' but maybe we can filter on frontend or backend later.
+             // Actually, `getForUser` filters.
+             // Let's implement a simple loop for now if we want to target only admins, OR just send to all if that's the requirement.
+             // The user said "appear in notification always there", implying visibility.
+             // Given it's a structural update, let's send to 'ALL' for now, or if we can get a list of admins.
+             // NotificationService.create takes userId. 'ALL' broadcasts to everyone.
+             
+             // Determine Notification Type & Persistence based on Semantic Level
+             let notifType = 'INFO';
+             let dismissible = true;
+
+             if (result.level === 'MAJOR') {
+                 notifType = 'ERROR';
+                 dismissible = false;
+             } else if (result.level === 'MINOR') {
+                 notifType = 'WARNING';
+             }
+
+             await notificationService.create(
+                'ALL', 
+                notifType as any, 
+                `System Update: v${result.latestVersion}`, 
+                `A new ${result.level || 'PATCH'} update is available.\n${result.title || ''}`,
+                { version: result.latestVersion, breaking: result.breaking, level: result.level },
+                '/admin/settings', // Link to settings page to update
+                { dismissible }
+            );
+
+        } catch (e) {
+            logger.error(`[UpdateService] System Notification failed: ${e}`);
         }
     }
 
