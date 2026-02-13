@@ -1,5 +1,5 @@
-import { permissionService } from './services/auth/PermissionService';
-import { UserProfile, Permission } from '../../shared/types';
+import { permissionService } from './features/auth/PermissionService';
+import {  UserProfile, Permission  } from '@shared/types';
 
 async function testPermissions() {
     console.log('--- Testing Granular Permissions ---');

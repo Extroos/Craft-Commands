@@ -1,6 +1,6 @@
 import { StorageProvider } from './StorageProvider';
 import { StorageFactory } from './StorageFactory';
-import { InstalledPlugin } from '../../../shared/types';
+import {  InstalledPlugin  } from '@shared/types';
 
 class PluginRepository implements StorageProvider<InstalledPlugin> {
     private provider: StorageProvider<InstalledPlugin>;

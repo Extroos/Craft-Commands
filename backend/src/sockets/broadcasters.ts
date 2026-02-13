@@ -1,9 +1,10 @@
 import { Server } from 'socket.io';
-import { processManager } from '../services/servers/ProcessManager';
-import { installerService } from '../services/servers/InstallerService';
-import { javaManager } from '../services/servers/JavaManager';
-import { backupService } from '../services/backups/BackupService';
-import { fileWatcherService } from '../services/files/FileWatcherService';
+import { processManager } from '../features/processes/ProcessManager';
+import { installerService } from '../features/installer/InstallerService';
+import { javaManager } from '../features/processes/JavaManager';
+import { backupService } from '../features/backups/BackupService';
+import { fileWatcherService } from '../features/files/FileWatcherService';
+import { nodeRegistryService } from '../features/nodes/NodeRegistryService';
 
 export const registerBroadcasters = (io: Server) => {
     // 1. Process Manager — SCOPED to server rooms
@@ -59,5 +60,11 @@ export const registerBroadcasters = (io: Server) => {
     });
     javaManager.on('error', (data: any) => {
         io.emit('install:error', data);
+    });
+
+    // 6. Node Registry (Global — status updates)
+    nodeRegistryService.removeAllListeners('status');
+    nodeRegistryService.on('status', (data: any) => {
+        io.emit('node:status', data);
     });
 };

@@ -1,37 +1,38 @@
-import fs from 'fs-extra';
-import path from 'path';
-import { AuditLog } from '../../../shared/types';
+import { StorageProvider } from './StorageProvider';
+import { StorageFactory } from './StorageFactory';
+import {  AuditLog  } from '@shared/types';
 
-export class AuditRepository {
-    private filePath: string;
-    private logs: AuditLog[] = [];
+export class AuditRepository implements StorageProvider<AuditLog> {
+    private provider: StorageProvider<AuditLog>;
 
     constructor() {
-        this.filePath = path.join(process.cwd(), 'data', 'audit.json');
-        this.load();
+        this.provider = StorageFactory.get<AuditLog>('audit');
+        this.init();
     }
 
-    private load() {
-        try {
-            fs.ensureDirSync(path.dirname(this.filePath));
-            if (fs.existsSync(this.filePath)) {
-                this.logs = fs.readJSONSync(this.filePath);
-            }
-        } catch (e) {
-            console.error('[AuditRepo] Failed to load audit logs:', e);
-            this.logs = [];
-        }
-    }
+    init() { return this.provider.init(); }
+    findAll() { return this.provider.findAll(); }
+    findById(id: string) { return this.provider.findById(id); }
+    findOne(criteria: Partial<AuditLog>) { return this.provider.findOne(criteria); }
+    create(item: AuditLog) { return this.provider.create(item); }
+    update(id: string, updates: Partial<AuditLog>) { return this.provider.update(id, updates); }
+    delete(id: string) { return this.provider.delete(id); }
 
     public async add(entry: AuditLog) {
-        this.logs.unshift(entry);
+        // We use create for consistency. 
+        // Note: Capping logic could be done here, but unshift is easier in memory.
+        // For SQLite, we should probably delete oldest if count > 5000.
+        this.create(entry);
         
-        // Cap at 5000
-        if (this.logs.length > 5000) {
-            this.logs = this.logs.slice(0, 5000);
+        // Background pruning (Async-ish)
+        const all = this.findAll();
+        if (all.length > 5000) {
+            const sorted = all.sort((a, b) => b.timestamp - a.timestamp);
+            const toDelete = sorted.slice(5000);
+            for (const item of toDelete) {
+                this.delete(item.id);
+            }
         }
-
-        await this.persist();
     }
 
     public getLogs(options: { 
@@ -42,7 +43,7 @@ export class AuditRepository {
         resourceId?: string, 
         search?: string 
     } = {}): { logs: AuditLog[], total: number } {
-        let filtered = this.logs;
+        let filtered = this.findAll().sort((a, b) => b.timestamp - a.timestamp);
 
         if (options.action) {
             filtered = filtered.filter(l => l.action === options.action);
@@ -75,14 +76,6 @@ export class AuditRepository {
             logs: filtered.slice(offset, offset + limit),
             total
         };
-    }
-
-    private async persist() {
-        try {
-            await fs.writeJSON(this.filePath, this.logs, { spaces: 2 });
-        } catch (e) {
-            console.error('[AuditRepo] Failed to persist logs:', e);
-        }
     }
 }
 

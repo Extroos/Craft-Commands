@@ -61,13 +61,23 @@ export class SqliteProvider<T extends { id: string }> implements StorageProvider
     }
 
     findOne(criteria: Partial<T>): T | undefined {
-        // Since we are storing as JSON blob, SQL filtering is limited unless we use JSON_EXTRACT.
-        // For simplicity and compatibility with the generic interface, we fetch all (cached?) or iterate.
-        // Given typical server counts (<100), fetching all is acceptable performance-wise.
+        // Optimization: If ID is in criteria, use findById
+        if (criteria.id) {
+            const item = this.findById(criteria.id);
+            if (!item) return undefined;
+            
+            // Verify remaining criteria
+            for (const key in criteria) {
+                if ((item as any)[key] !== (criteria as any)[key]) return undefined;
+            }
+            return item;
+        }
+
+        // Fallback to full scanning for complex criteria
         const all = this.findAll();
         return all.find(item => {
             for (const key in criteria) {
-                if (item[key] !== criteria[key]) return false;
+                if ((item as any)[key] !== (criteria as any)[key]) return false;
             }
             return true;
         });
@@ -76,11 +86,11 @@ export class SqliteProvider<T extends { id: string }> implements StorageProvider
     create(item: T): T {
         const stmt = this.db.prepare(`INSERT INTO ${this.tableName} (id, data) VALUES (?, ?)`);
         stmt.run(item.id, JSON.stringify(item));
+        this.syncToJson(); // Maintain JSON sync for safe downgrade
         return item;
     }
 
     update(id: string, updates: Partial<T>): T | null {
-        // Transaction to ensure atomicity
         const updateTx = this.db.transaction(() => {
             const current = this.findById(id);
             if (!current) return null;
@@ -91,12 +101,32 @@ export class SqliteProvider<T extends { id: string }> implements StorageProvider
             return updated;
         });
 
-        return updateTx();
+        const result = updateTx();
+        if (result) this.syncToJson(); // Maintain JSON sync
+        return result;
     }
 
     delete(id: string): boolean {
         const stmt = this.db.prepare(`DELETE FROM ${this.tableName} WHERE id = ?`);
         const info = stmt.run(id);
-        return info.changes > 0;
+        const success = info.changes > 0;
+        if (success) this.syncToJson();
+        return success;
+    }
+
+    /**
+     * Safe Downgrade Helper: Syncs the current SQL state back to JSON.
+     * This ensures that if the user toggles back to JSON mode, their data is intact.
+     */
+    private syncToJson() {
+        if (!this.migrationJsonPath) return;
+        
+        try {
+            const data = this.findAll();
+            const fullPath = path.join(process.cwd(), 'data', this.migrationJsonPath);
+            fs.writeJSONSync(fullPath, data, { spaces: 2 });
+        } catch (e) {
+            console.error(`[SqliteProvider] Background JSON sync failed for ${this.tableName}:`, e);
+        }
     }
 }

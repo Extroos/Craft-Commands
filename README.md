@@ -2,166 +2,184 @@
   
 # CraftCommand
 
-**Professional Minecraft server management platform focused on local-first and team hosting.**
+**The Professional Hybrid Cloud Platform for Java & Bedrock Infrastructure**
 
-![version](https://img.shields.io/badge/version-v1.9.1--stable-emerald)
+![version](https://img.shields.io/badge/version-v1.10.0-emerald)
 ![platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)
-![license](https://img.shields.io/badge/license-MIT-blue.svg)
+![license](https://img.shields.io/badge/license-AGPLv3-blue.svg)
 
-A self-hosted Minecraft control panel designed to **prevent mistakes**, **explain problems**, and **scale safely from solo use to small teams**.
+**CraftCommand** is a professional-grade orchestrator that bridges the gap between simple local launchers and complex enterprise infrastructure. It provides **monolithic management** with a **distributed data plane**, designed to **prevent mistakes**, **explain problems**, and **scale safely** from solo use to massive networks.
 
-Built with **React 19** and **Node.js**, featuring **granular permissions**, **audit logging**, **atomic proxying**, and **secure, guided connectivity options**.
-
-[Features](#features) • [Quick Start](#quick-start) • [Security Model](#security-model) • [Documentation](#documentation)
+[Features](docs/ARCHITECTURE.md) • [Architecture](docs/ARCHITECTURE.md) • [Quick Start](#quick-start) • [Security Model](docs/SECURITY.md) • [Full Docs](docs/README.md)
 
 </div>
 
-## Why Craft Commands?
+---
+
+## Why CraftCommand?
 
 ### The "Goldilocks" Solution
 
-Most server tools are either **too simple** (a basic `.bat` file that crashes if you look at it wrong) or **too complex** (Enterprise panels like Pterodactyl that require a Linux degree and 4 hours to install).
+Most hosting solutions are either **too fragile** (Basic `.bat` files) or **too complex** (Enterprise panels requiring Linux degrees and hours of setup). CraftCommand offers a third way: **Hybrid Orchestration**.
 
-Craft Commands sits perfectly in the middle:
+- **Easier than a Batch File**: One click to start. No editing text files to fix RAM or Java versions.
+- **Unified Engine**: Native support for **Java (Paper, Spigot, Vanilla)** and **Bedrock Edition (Dedicated Server)** with software-aware configurations.
+- **Simpler than Enterprise**: Runs on **Windows**, installs in **seconds**, and scales with **Zero-Knowledge** worker nodes.
 
-- **Easier than a Batch File**: One click to start. No editing text files to change RAM.
-- **More Powerful than a Launcher**: Full breakdown of CPU/RAM usage, player auditing, and remote access.
-- **Simpler than Enterprise**: Runs on **Windows**, runs **Natively** (Docker is optional and never required), and installs in **seconds**.
+### Honest Comparison Matrix
 
-### Honest Comparison
-
-| Feature           | Standard Launchers | Enterprise Panels (Pterodactyl/Pelican) |         **Craft Command**          |
-| :---------------- | :----------------: | :-------------------------------------: | :--------------------------------: |
-| **Ideal For**     |      Testing       |       Reselling & Large Networks        |      **Home Hosting & Teams**      |
-| **Setup Time**    |      Instant       |        Hours (Linux/Docker req.)        |     **Instant (Unzip & Run)**      |
-| **Architecture**  |    Local Child     |            Distributed Nodes            |    **Monolithic (All-in-One)**     |
-| **OS Focus**      |        All         |               Linux First               |         **Windows First**          |
-| **Reselling**     |         ❌         |                   ✅                    | **❌ (Not for hosting providers)** |
-| **Auto-Repair**   | ❌ (Crash = Dead)  |            ✅ (Auto-Restart)            |    **✅ (Diagnosis + Healing)**    |
-| **Proxy Support** |         ❌         |              Manual Config              |    **✅ Atomic (Self-Healing)**    |
-
-> [!NOTE]
-> **Use Pterodactyl if** you need to manage multiple physical machines from one panel or sell servers to customers.
-> **Use Craft Command if** you want a powerful, self-hosted panel for your own machine without needing a Linux degree.
+| Feature              | Standard Launchers |     Enterprise Panels      |      **CraftCommand (v1.10.0)**       |
+| :------------------- | :----------------: | :------------------------: | :-----------------------------------: |
+| **Ideal For**        |      Testing       | Reselling & Large Networks |       **Home Hosting & Teams**        |
+| **Setup Time**       |      Instant       |     Hours (Linux req.)     |       **Instant (Zero-Config)**       |
+| **Architecture**     |    Local Child     |     Distributed Docker     |      **Hybrid (Local + Agents)**      |
+| **OS Synergy**       |        All         |        Linux First         | **Universal (Win Panel + Lin Nodes)** |
+| **Resilience**       |    Crash = Dead    |        Auto-Restart        |  **Self-Healing + Zombie Adoption**   |
+| **Networking**       |  Manual Port Fwd   |       Reverse Proxy        |   **Atomic Proxy + SSL Auto-Issue**   |
+| **License Model**    |      Various       |        Proprietary         |         **Copyleft (AGPLv3)**         |
+| **Environment Fix**  |   Manual Install   |        Error & Exit        |  **Integrated Auto-Fix (Heuristic)**  |
+| **File Transfer**    |     Local Only     |      SFTP Client Req.      |  **Secure Chunked Sync (Built-in)**   |
+| **UX Design**        |  Industrial/Flat   |      Functional/Busy       |     **Premium Glassmorphic IDE**      |
+| **Audit Logging**    |         ❌         |        Per-Instance        |   **Immutable Cluster-Wide Ledger**   |
+| **Software Support** |  Java Only (typ.)  |         Universal          |    **Java & Bedrock (Optimized)**     |
 
 ![Server Selection](assets/ServerSelection.png)
-_manage multiple servers with a clean, professional interface._
+_Manage multiple servers with a professional, data-dense interface._
 
 ---
 
-## Platform Support
+## Core Capabilities
 
-### **Windows** (Recommended)
+### 1. Global Operations Center (GOC)
 
-- **Status**: 🟢 **Full Support**
-- **Modes**: Native Process or Docker Container.
-- **Features**: Automatic Java installation, one-click launcher, native file permissions.
+_The cluster-wide "God View"_
 
-### **Linux & macOS**
+- **Resource Heatmap**: Spatial visualization of CPU/RAM density across the entire cluster.
+- **Environment Health**: Integrated prerequisite detection (Java 8-21, Docker, Git).
+- **One-Click Auto-Fix**: Automatically repair remote node environments directly from the UI using heuristic diagnosis.
+- **Unified Instance Monitor**: High-performance searchable monitor for all instances across all hosts.
 
-- **Status**: 🟡 **Docker Recommended**
-- **Modes**: Docker Container (Best) or Manual Native (Experimental).
-- **Note**: The native process manager is optimized for Windows. For Linux/Mac, we strongly recommend using the **Docker Mode** (`npm run dev`) which pulls pre-configured environments safely.
+### 2. Intelligent Scheduler
 
----
+_Deterministic Infrastructure Orchestration_
 
-## Features
+- **Metric-Based Placement**: Servers are automatically deployed to the node with the healthiest resource profile (Lowest CPU load, Highest Free RAM).
+- **Capacity Guards**: Prevents over-provisioning through proactive hardware monitoring and capability advertising.
 
-### For Everyone (The Smooth Experience)
+### 3. Resilience & Self-Healing (The "Doctor")
 
-- **One-Click Modpacks** — Guided setup for Paper, Purpur, Fabric, Forge, NeoForge, and major Modpacks.
-- **Zero-Config HTTPS** — Secure your panel with native SSL management handled entirely by our guided launcher.
-- **File Manager IDE** — Edit configurations, logs, and properties with syntax highlighting, co-presence tracking, and instant saving.
-- **Smart Collaboration** — Real-time team presence, Operator Chat with PFP syncing, and activity broadcasts to keep your team coordinated.
-- **Quality Mode** — A stunning, glass-morphic interface that feels like a modern app, not a spreadsheet.
+- **Zombie Adoption**: If the Node Agent or Panel restarts, it automatically re-attaches to running server processes without downtime.
+- **Heuristic Diagnosis**: Our engine reads logs faster than you can, identifying EULA issues, Java conflicts, or plugin loops instantly.
+- **Atomic Proxy**: Velocity and Bungee proxies are managed as atomic units—if a backend falls, the proxy holds the player connection until recovery.
+- **Watchdog System**: Proactive monitoring for hangs and deadlocks with automated recovery.
 
-### For Developers & Power Users (The Engineering Edge)
+### 4. Developer Experience (DevX)
 
-- **Hybrid Orchestration** — Run servers as local processes or isolated Docker containers with a single toggle.
-- **3-State Permissions** — Granular Access Control Lists (Grant, Deny, Inherit) for every server and system node.
-- **Audit Ledger** — Immutable logging of every system action, from login attempts to hierarchy violations.
-- **SQL Scaling** — Start with JSON for portability, switch to SQLite (Robust v1.9.0) or MySQL for teams with one config change.
+- **Embedded Monaco IDE**: The power of VS Code in your browser with full syntax highlighting for YAML, JSON, and Properties.
+- **Real-time Co-Presence**: See exactly which file or tab your teammates are viewing to prevent configuration drift.
+- **Plugin Marketplace**: Aggregate search (Modrinth, Spiget, Hangar) with automated, one-click installation.
+- **Smart Terminal**: Resizable console with adaptive prompt, scanline effects, and PowerShell quoting stabilization.
 
 ![Dashboard](assets/Dashboard.png)
 _Real-time monitoring with heuristic diagnosis and self-healing controls._
 
 ---
 
-## The "Secret Sauce" (Fun Details)
+## Distributed Hosting (Worker Nodes)
 
-We didn't just build a panel; we built a **Sysadmin in a Box**.
+**Scale safely without touching the command line.**
 
-- **Agile Networking**: Ever tried to start a server and got "Port 25565 already in use"? Our engine detects the conflict and guides you to fix it instantly.
-- **The Doctor**: Our **Heuristic Diagnosis Engine** reads your logs faster than you can. It identifies common issues (EULA, Java version, Plugin conflicts, Crash loops) and offers one-click solutions or automatic fixes.
-- **Plugin Stability**: Automatic recovery for crashing plugins and protection against "startup loops" that could corrupt your world data.
-- **Co-presence System**: See exactly who is editing which file or viewing which tab in real-time, preventing configuration conflicts before they happen.
-- **Atomic Proxy**: Want a network? Deploy a Velocity Proxy. If it crashes, we restart it. If a backend server dies, we queue players. It's a self-healing mesh network for your bedroom.
+CraftCommand utilizes a specialized **Node Agent** to manage remote resources (Other PCs, VPS, or Old Laptops).
+
+- **One-Click Enrollment**: Use the Wizard to generate a secure **Bootstrap ZIP**.
+- **Zero-Knowledge Pairing**: Automated cryptographic handshake using rotating secrets.
+- **Mixed OS Clusters**: Host your Panel on Windows and your Servers on a fleet of Linux VPS instances seamlessly.
 
 ---
 
 ## Quick Start
 
-### Requirements
+### Installation & Launch
 
-- **Node.js 18+**
-- **Windows 10+**, **macOS 10.15+**, or **Linux (Ubuntu 20.04+)**
+#### Flow 1: Single PC (Hybrid Mode)
 
-### Windows (Recommended)
+_Best for: Users who want to play and host on the same computer._
 
-Craft Commands includes a guided launcher — **no commands required**.
+1.  **Download & Extract** the latest release.
+2.  **Run Launcher**: Execute `run_locally.bat`.
+3.  **Start**: Choose **[1] Start (Auto-Setup)**.
+4.  **Access**: Open `http://localhost:3000`.
 
-1. Run `run_locally.bat`
-2. Choose **[1] Start (Auto-Setup)**
-3. The dashboard opens automatically in your browser
+#### Flow 2: Distributed (Commander + Nodes)
 
-The launcher also provides HTTPS setup, remote access controls, and emergency repairs.
+_Best for: Managing a fleet of servers (VPS, extra laptops, etc)._
 
-### Linux / macOS (Manual)
+1.  **Set up the Commander**: Follow Flow 1 to install the panel on your main PC.
+2.  **Add a Node**:
+    - Go to **Global Settings > Nodes**.
+    - Click **"Add Node"**.
+    - Follow the Wizard to generate a **Bootstrap Bundle (ZIP)**.
+3.  **Deploy Agent**:
+    - Copy the ZIP to your second machine.
+    - Extract and run `bootstrap_agent.bat`.
+    - The node will automatically pair with your Commander panel using Zero-Knowledge encryption.
 
-```bash
-git clone https://github.com/Extroos/craft-commands.git
-cd craft-commands
-npm install
-cd backend && npm install && cd ..
-cd frontend && npm install && cd ..
-npm run start:all
-```
+#### Flow 3: Developer (Source)
 
-### Access
+_Best for: Contributing to CraftCommand._
 
-Open the dashboard at: **http://localhost:3000**
+1.  **Clone Repo**: `git clone https://github.com/Extroos/Craft-Commands.git`
+2.  **Install**: `npm install` (Root directory).
+3.  **Dev Mode**: `npm run dev`.
+4.  **Access**: Open `http://localhost:3000`.
 
-### Default Credentials (First Run Only)
+### Default Credentials
 
 - **Email:** `admin@craftcommands.io`
 - **Password:** `admin`
 
-_You will be **required to change these credentials immediately** after the first login._
+> [!CAUTION]
+> You will be **required to change these credentials immediately** after your first login.
 
 ---
 
 ## Security Model
 
-Craft Commands follows a **Secure by Default, Explicit by Choice** philosophy.
+**Secure by Default, Explicit by Choice.**
 
-- **Network Isolation** — Local-only binding by default (`127.0.0.1`).
-- **Explicit Exposure** — Remote access requires owner-level approval and guided configuration.
-- **Hierarchy Guard** — Strict role-based isolation (Owner > Admin > Manager). Users cannot modify anyone at or above their own level.
-- **Token Hardening** — JWT-based sessions with industry-standard bcrypt hashing for all credentials.
-- **Emergency Killswitch** — Instant local launcher options to sever all external connections.
+- **RBAC (Hierarchy Guard)**: Strict role isolation (Owner > Admin > Manager).
+- **Network Isolation**: Local-only binding by default; remote exposure requires owner-level approval.
+- **Token Hardening**: JWT-based sessions with industry-standard bcrypt hashing.
+- **Capability Advertising**: Nodes advertise their limits; the Panel never sends a task a node cannot sustain.
+
+---
+
+---
+
+## Troubleshooting
+
+Common issues and error codes are documented in our dedicated guide.
+
+[**View the Troubleshooting Guide (Error Codes & Fixes)**](docs/troubleshooting.md)
+
+Some common quick fixes:
+
+- **E_JAVA_MISSING**: Install Java 21 (for 1.21+) or Java 17 (for 1.18+).
+- **E_PORT_IN_USE**: Port 25565 is taken. Stop other servers or change the port.
+- **Can't Connect**: Check your firewall and port forwarding settings.
 
 ---
 
 ## Technical Architecture
 
-- **Frontend:** React 19 (Latest), Vite, TailwindCSS, Framer Motion (60FPS animations)
-- **Backend:** Node.js, Express, Socket.IO (Real-time streams)
-- **Orchestration:** Native Process Spawning & Docker Engine Integration
-- **Storage:** Hybrid SQLite (for teams) and JSON (for solo portability)
-- **Security:** Helmet, Rate-Limiting, JWT, Hierarchy Middleware
+- **Core**: React 19, TypeScript, Node.js, Express, Socket.IO.
+- **Styling**: Framer Motion (60FPS), TailwindCSS, Glassmorphism (Quality Mode).
+- **Orchestration**: Native Process Spawning & Docker Engine API integration.
+- **Storage**: Hybrid Dual-Storage (SQLite for teams, JSON for solo portability).
+- **License**: [GNU Affero General Public License v3.0](LICENSE)
 
 ---
 
 <div align="center">
-Developed by <a href="https://github.com/Extroos">Extroos</a>
+  Developed by <a href="https://github.com/Extroos">Extroos</a>
 </div>

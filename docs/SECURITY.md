@@ -1,32 +1,29 @@
 # Security Policy
 
-## Authentication
+## Supported Versions
 
-- **Method**: JSON Web Tokens (JWT).
-- **Passwords**: Hashed using `bcryptjs` (Salt Rrounds: 10).
-- **Storage**: User credentials are stored in `data/users.json`.
+The following versions are currently supported with security updates:
 
-## Authorization
+| Version | Supported                   |
+| ------- | --------------------------- |
+| 1.10.x  | :white_check_mark: (Stable) |
+| 1.9.x   | :warning: (Legacy)          |
 
-Role-Based Access Control (RBAC) is implemented via `UserRole`:
+## Reporting a Vulnerability
 
-- `OWNER`: Full System Access + User Management.
-- `ADMIN`: Server Management (Start/Stop/Edit).
-- `MANAGER`: Limited Server Management.
-- `VIEWER`: Read-only access to console/stats.
+If you discover a security vulnerability, **do not create a public issue**. Contact the development team directly with a detailed description and steps to reproduce.
+
+## Hardening Measures (v1.10.0+)
+
+- **Trio-State RBAC**: Inherit, Allow, and Deny logic with strict role isolation (Owner > Admin > Manager).
+- **Network Isolation**: Local-only binding by default; remote exposure requires explicit owner-level approval.
+- **Zero-Config SSL**: Automated self-signed certificate generation for local HTTPS.
+- **Atomic Persistence**: Database writes use atomic operations to prevent corruption.
+- **Audit Synchronization**: Every security-sensitive action is logged with immutable timestamps.
+- **Token Hardening**: JWT-based sessions with industry-standard `bcryptjs` hashing.
 
 ## File System Security
 
 - **Path Traversal Protection**: Services use sanitized paths.
 - **Isolation**: Server instances run in isolated directories within `minecraft_servers/`.
-- **Repo Layer**: Direct file I/O is restricted to the Repository Layer (`backend/src/storage/`).
-
-## API Security
-
-- **Socket.IO**: Connection requires a valid JWT Handshake.
-- **Validation**: All inputs are validated at the Service boundary.
-
-## Reporting Vulnerabilities
-
-Please do not open GitHub issues for security vulnerabilities.
-Contact the development team directly or submit a private report.
+- **Repo Layer Isolation**: Direct file I/O is restricted to the Repository Layer.

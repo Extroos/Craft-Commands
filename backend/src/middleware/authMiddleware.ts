@@ -1,9 +1,12 @@
 import { Request, Response, NextFunction } from 'express';
 import jwt from 'jsonwebtoken';
-import { authService } from '../services/auth/AuthService';
-import { permissionService } from '../services/auth/PermissionService';
-import { systemSettingsService } from '../services/system/SystemSettingsService';
-import { Permission } from '../../../shared/types';
+import { authService } from '../features/auth/AuthService';
+import { permissionService } from '../features/auth/PermissionService';
+import { systemSettingsService } from '../features/system/SystemSettingsService';
+import { Permission, ServerCapabilities } from '../../../shared/types';
+import { getServer } from '../features/servers/ServerService';
+import { getServerCapabilities } from '../../../shared/utils/CapabilityUtils';
+
 
 export const verifyToken = (req: Request, res: Response, next: NextFunction) => {
     // Check if Host Mode is disabled (Personal Mode)
@@ -19,6 +22,18 @@ export const verifyToken = (req: Request, res: Response, next: NextFunction) => 
             username: 'Personal'
         };
         console.log('[AuthMiddleware] Personal Mode: Mock user attached');
+        return next();
+    }
+
+    // E2E Test Bypass (Safe: Only active if NODE_ENV=test)
+    if (process.env.NODE_ENV === 'test' && req.headers['x-test-bypass'] === 'true') {
+        (req as any).user = {
+            id: 'e2e-test-user',
+            email: 'test@localhost',
+            role: 'OWNER',
+            username: 'TestUser'
+        };
+        console.log('[AuthMiddleware] E2E Test Bypass: Mock user attached');
         return next();
     }
 
@@ -99,7 +114,7 @@ export const requirePermission = (permission: Permission) => {
         if (!user) return res.status(401).json({ error: 'Unauthorized' });
 
         if (!permissionService.can(user, permission, serverId)) {
-             import('../services/system/AuditService').then(({ auditService }) => {
+             import('../features/system/AuditService').then(({ auditService }) => {
                 auditService.log(user.id, 'PERMISSION_DENIED', serverId || 'system', { permission, method: req.method, path: req.path }, req.ip, user.email);
             });
             return res.status(403).json({ error: 'Forbidden: Insufficient Permissions' });
@@ -120,3 +135,22 @@ export const requireRole = (allowedRoles: string[]) => {
         next();
     };
 };
+
+export const requireCapability = (capability: keyof ServerCapabilities) => {
+    return (req: Request, res: Response, next: NextFunction) => {
+        const serverId = req.params.id || req.params.serverId || (req.query.serverId as string);
+        if (!serverId) return next(); // Cannot check if no server context
+
+        const server = getServer(serverId);
+        if (!server) return res.status(404).json({ error: 'Server context required' });
+
+        const capabilities = getServerCapabilities(server.software);
+        if (!capabilities[capability]) {
+            return res.status(403).json({ 
+                error: `Action Unavailable: The current server (${server.software}) does not support this feature (${capability}).` 
+            });
+        }
+        next();
+    };
+};
+

@@ -1,4 +1,4 @@
-import { PresenceEntry, UserRole } from '../../../shared/types';
+import {  PresenceEntry, UserRole  } from '@shared/types';
 
 /**
  * In-memory tracker for which users are viewing which servers.

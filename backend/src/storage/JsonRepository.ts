@@ -19,7 +19,11 @@ export abstract class JsonRepository<T extends { id: string }> implements Storag
         try {
             fs.ensureDirSync(path.dirname(this.filePath));
             if (fs.existsSync(this.filePath)) {
-                this.data = fs.readJSONSync(this.filePath);
+                const loaded = fs.readJSONSync(this.filePath);
+                this.data = Array.isArray(loaded) ? loaded : [];
+                if (!Array.isArray(loaded)) {
+                    console.warn(`[Repository] ${this.filePath} exists but is not an array. Initialized as empty.`);
+                }
             } else {
                 this.data = [];
                 this.save();

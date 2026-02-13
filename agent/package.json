@@ -1,0 +1,22 @@
+{
+  "name": "craftcommand-node-agent",
+  "version": "1.10.0",
+  "license": "AGPL-3.0-only",
+  "description": "CraftCommand Node Agent — runs on remote hosts to manage Minecraft servers on behalf of the panel.",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "ts-node src/index.ts"
+  },
+  "dependencies": {
+    "socket.io-client": "^4.7.4",
+    "systeminformation": "^5.21.0",
+    "commander": "^12.0.0"
+  },
+  "devDependencies": {
+    "typescript": "^5.3.0",
+    "ts-node": "^10.9.0",
+    "@types/node": "^20.11.0"
+  }
+}

@@ -637,3 +637,12 @@ body.visual-quality-high .quality-animate-in {
   0%, 100% { box-shadow: 0 0 0 0 hsl(var(--primary) / 0.1); }
   50% { box-shadow: 0 0 20px 5px hsl(var(--primary) / 0.2); }
 }
+
+@keyframes gradient-x {
+  0%, 100% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+}
+
+.animate-gradient-x {
+  animation: gradient-x 3s ease infinite;
+}

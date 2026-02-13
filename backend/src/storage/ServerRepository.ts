@@ -1,7 +1,7 @@
 import { StorageProvider } from './StorageProvider';
 import { StorageFactory } from './StorageFactory';
-import { ServerConfig } from '../../../shared/types';
-// import { systemSettingsService } from '../services/system/SystemSettingsService'; // No longer needed directly here
+import {  ServerConfig  } from '@shared/types';
+// import { systemSettingsService } from '../features/system/SystemSettingsService'; // No longer needed directly here
 
 export class ServerRepository implements StorageProvider<ServerConfig> {
     private provider: StorageProvider<ServerConfig>;
@@ -15,6 +15,7 @@ export class ServerRepository implements StorageProvider<ServerConfig> {
     
     public findAll(): ServerConfig[] {
         const data = this.provider.findAll();
+        if (!Array.isArray(data)) return [];
         return data.map(s => this.sanitizeServerConfig(s));
     }
 
@@ -48,9 +49,16 @@ export class ServerRepository implements StorageProvider<ServerConfig> {
     private sanitizeServerConfig(server: ServerConfig): ServerConfig {
         const sanitized = { ...server };
 
-        // 1. Executable Fallback
-        if (!sanitized.executable || sanitized.executable === 'undefined' || sanitized.executable === 'null') {
-            sanitized.executable = 'server.jar';
+        // 1. Executable Fallback (v1.10.1: Added Bedrock support)
+        const isBedrock = sanitized.software === 'Bedrock';
+        const isJavaExe = sanitized.executable === 'server.jar';
+        
+        if (!sanitized.executable || sanitized.executable === 'undefined' || sanitized.executable === 'null' || (isBedrock && isJavaExe)) {
+            if (isBedrock) {
+                sanitized.executable = process.platform === 'win32' ? 'bedrock_server.exe' : 'bedrock_server';
+            } else {
+                sanitized.executable = 'server.jar';
+            }
         }
 
         // 2. Resource Defaults
@@ -58,9 +66,16 @@ export class ServerRepository implements StorageProvider<ServerConfig> {
             sanitized.ram = 4;
         }
 
-        // 3. Command Regeneration (If missing or empty)
-        if (!sanitized.executionCommand || sanitized.executionCommand.trim().length === 0) {
-            sanitized.executionCommand = `java -Xmx${sanitized.ram}G -jar ${sanitized.executable} nogui`;
+        // 3. Command Regeneration (If missing, empty, or Java-ism for Bedrock)
+        const isJavaCommand = sanitized.executionCommand?.includes('java') || sanitized.executionCommand === 'server.jar';
+        
+        if (!sanitized.executionCommand || sanitized.executionCommand.trim().length === 0 || (isBedrock && isJavaCommand)) {
+            if (isBedrock) {
+                const exe = sanitized.executable;
+                sanitized.executionCommand = process.platform === 'win32' ? exe : `LD_LIBRARY_PATH=. ./${exe}`;
+            } else {
+                sanitized.executionCommand = `java -Xmx${sanitized.ram}G -jar ${sanitized.executable} nogui`;
+            }
         }
 
         // 4. Critical Navigation Fields

@@ -13,6 +13,7 @@ export type Permission =
     | 'server.files.read'
     | 'server.files.write'
     | 'server.settings'
+    | 'server.settings.write'
     | 'server.players.manage'
     | 'server.backups.manage'
     | 'server.create'
@@ -28,7 +29,7 @@ export interface ResourceConfig {
 export interface ServerTemplate {
     id: string;
     name: string;
-    type: 'Paper' | 'Fabric' | 'Forge' | 'NeoForge' | 'Modpack' | 'Vanilla' | 'Spigot';
+    type: 'Paper' | 'Fabric' | 'Forge' | 'NeoForge' | 'Modpack' | 'Vanilla' | 'Spigot' | 'Bedrock';
     version: string; // Minecraft version
     build?: string; // Specific build/loader version
     icon?: string;
@@ -121,6 +122,10 @@ export interface ServerAdvancedFlags {
     threadPriority?: 'low' | 'normal' | 'high' | 'ultra';
     startDelay?: number;
     killTimeout?: number;
+    // Bedrock Specific
+    tickDistance?: number;
+    contentLog?: boolean;
+    compressionLimit?: number;
 }
 
 export interface ServerConfig {
@@ -129,7 +134,8 @@ export interface ServerConfig {
     folderName?: string; // Optional custom folder name
     loaderBuild?: string; // Specific build version
     version: string; // Minecraft Version
-    software: 'Paper' | 'Spigot' | 'Forge' | 'Fabric' | 'Vanilla' | 'Purpur';
+    software: 'Paper' | 'Spigot' | 'Forge' | 'Fabric' | 'Vanilla' | 'Purpur' | 'Bedrock';
+    isExternal?: boolean; // If true, files are owned by user, not panel
     port: number;
     ram: number; // GB
     cpuPriority?: 'normal' | 'high' | 'realtime';
@@ -167,8 +173,9 @@ export interface ServerConfig {
     crashDetection?: boolean;
     includeInTotal?: boolean;
     publicStatus?: boolean;
-    executionEngine?: 'native' | 'docker';
+    executionEngine?: 'native' | 'docker' | 'remote';
     dockerImage?: string;
+    nodeId?: string; // If set, this server runs on a remote node
     backupConfig?: {
         worldOnly: boolean; // Default: false (backup everything)
         customWorldPaths?: string[]; // Optional: specify custom world folder names
@@ -181,7 +188,7 @@ export interface ServerConfig {
 
 export type TabView = 'DASHBOARD' | 'CONSOLE' | 'FILES' | 'PLUGINS' | 'SCHEDULES' | 'BACKUPS' | 'PLAYERS' | 'ACCESS' | 'SETTINGS' | 'ARCHITECT' | 'INTEGRATIONS';
 
-export type AppState = 'LOGIN' | 'PUBLIC_STATUS' | 'SERVER_SELECTION' | 'CREATE_SERVER' | 'MANAGE_SERVER' | 'USER_MANAGEMENT' | 'USER_PROFILE' | 'GLOBAL_SETTINGS' | 'AUDIT_LOG';
+export type AppState = 'LOGIN' | 'PUBLIC_STATUS' | 'SERVER_SELECTION' | 'CREATE_SERVER' | 'MANAGE_SERVER' | 'USER_MANAGEMENT' | 'USER_PROFILE' | 'GLOBAL_SETTINGS' | 'AUDIT_LOG' | 'GLOBAL_OPERATIONS';
 
 export type AccentColor = 'emerald' | 'blue' | 'violet' | 'amber' | 'rose';
 
@@ -221,6 +228,11 @@ export interface GlobalSettings {
             externalIP?: string;
         };
         dockerEnabled?: boolean;
+        distributedNodes?: {
+            enabled: boolean;
+        };
+        autoHealing?: boolean;
+        updateWeb?: boolean;
     };
     discordBot?: DiscordBotConfig;
     version?: string; // Programmatic version from version.json
@@ -252,6 +264,7 @@ export interface Backup {
 
 export interface ScheduleTask {
     id: string;
+    serverId: string; // Added for storage consolidation
     name: string;
     command: string;
     cron: string;
@@ -338,7 +351,9 @@ export type AuditAction =
     | 'SERVER_IMPORT_LOCAL' | 'SERVER_IMPORT_ARCHIVE'
     | 'TEMPLATE_INSTALL' | 'FILE_EDIT' | 'EULA_ACCEPT' | 'PERMISSION_DENIED'
     | 'SYSTEM_SETTINGS_UPDATE' | 'SYSTEM_CACHE_CLEAR' | 'DISCORD_RECONNECT' | 'DISCORD_SYNC'
-    | 'ASSET_UPLOAD';
+    | 'ASSET_UPLOAD' | 'WEB_UPDATE_RUN' | 'WEB_UPDATE_ROLLBACK' | 'WEB_UPDATE_FAIL'
+    | 'SERVER_IMPORT' | 'SERVER_IMPORT_UNDO' | 'AUTO_HEAL'
+    | 'SERVER_ICON_UPDATE';
 
 export interface AuditLog {
     id: string;
@@ -352,13 +367,18 @@ export interface AuditLog {
 }
 
 export interface ImportAnalysis {
-    software: 'Paper' | 'Spigot' | 'Forge' | 'Fabric' | 'Vanilla' | 'Purpur';
+    software: 'Paper' | 'Spigot' | 'Forge' | 'Fabric' | 'Vanilla' | 'Purpur' | 'Bedrock';
     version: string;
     executable: string;
     port: number;
     ram: number;
     javaVersion: 'Java 8' | 'Java 11' | 'Java 17' | 'Java 21';
     isModded: boolean;
+    portConflict?: { port: number; process?: string };
+    javaMissing?: boolean;
+    loaderMismatch?: boolean;
+    suggestions: string[];
+    pterodactylDetected: boolean;
 }
 
 // --- Diagnosis Types (Synced) ---
@@ -371,7 +391,7 @@ export interface DiagnosisResult {
     explanation: string;
     recommendation: string;
     action?: {
-        type: 'UPDATE_CONFIG' | 'SWITCH_JAVA' | 'AGREE_EULA' | 'INSTALL_DEPENDENCY' | 'REPAIR_PROPERTIES' | 'CLEANUP_TELEMETRY' | 'OPTIMIZE_ARGUMENTS' | 'PURGE_GHOST' | 'RESOLVE_PORT_CONFLICT' | 'REMOVE_DUPLICATE_PLUGIN' | 'CREATE_PLUGIN_FOLDER';
+        type: 'UPDATE_CONFIG' | 'SWITCH_JAVA' | 'AGREE_EULA' | 'INSTALL_DEPENDENCY' | 'REPAIR_PROPERTIES' | 'CLEANUP_TELEMETRY' | 'OPTIMIZE_ARGUMENTS' | 'PURGE_GHOST' | 'RESOLVE_PORT_CONFLICT' | 'REMOVE_DUPLICATE_PLUGIN' | 'CREATE_PLUGIN_FOLDER' | 'TAKE_HEAP_SNAPSHOT' | 'RESTORE_DATA_BACKUP' | 'REINSTALL_BEDROCK';
         payload: any;
         autoHeal?: boolean; // If true, AutoHealingService can execute this automatically
     };
@@ -403,6 +423,7 @@ export interface ConnectionStatus {
     enabled: boolean;
     method?: ConnectivityMethod;
     externalIP?: string;
+    localIP?: string;
     bindAddress: string;
     error?: string;
     details?: any; // Provider specific details (e.g. tunnel URL)
@@ -538,4 +559,90 @@ export interface CollabSettings {
         readRole: UserRole;      // Who can READ console output (default: 'VIEWER')
         writeRole: UserRole;     // Who can SEND commands (default: 'MANAGER')
     };
+}
+
+// --- Distributed Node Types ---
+
+export type NodeStatus = 'ONLINE' | 'OFFLINE' | 'DEGRADED' | 'ENROLLING';
+
+export interface NodeHealth {
+    cpu: number;           // 0-100 percentage
+    memoryUsed: number;    // bytes
+    memoryTotal: number;   // bytes
+    diskUsed: number;      // bytes
+    diskTotal: number;     // bytes
+    serverCount: number;   // active servers on this node
+    uptime: number;        // seconds
+}
+
+export interface NodeCapabilities {
+    java?: string;         // e.g. "17.0.2"
+    docker?: boolean;      // Is Docker engine available?
+    git?: boolean;         // Is git installed?
+    node?: string;         // Node.js version
+    os?: string;           // e.g. "Linux 5.10" or "Windows 10"
+}
+
+export interface NodeInfo {
+    id: string;            // UUID
+    name: string;          // Human-readable label (e.g. "Gaming Rig", "VPS-01")
+    host: string;          // IP or hostname
+    port: number;          // Agent port
+    status: NodeStatus;
+    health?: NodeHealth;
+    capabilities?: NodeCapabilities;
+    protocolVersion: string; // Must match panel version
+    enrolledAt: number;    // Timestamp
+    lastHeartbeat: number; // Timestamp
+    labels?: string[];     // Tags for scheduling (e.g. "high-ram", "ssd")
+    agentVersion?: string; // Version of the node agent binary
+    enrollmentSecret?: string; // Secret used during pre-enrollment
+    enrollmentToken?: string;  // Short-lived token for download authentication
+}
+
+// --- Ecosystem Types (Phase 17) ---
+
+export interface ServerProfile {
+    name: string;
+    description?: string;
+    version: string; // Minecraft version
+    software: 'Paper' | 'Spigot' | 'Forge' | 'Fabric' | 'Vanilla' | 'Purpur' | 'Bedrock';
+    javaVersion: 'Java 8' | 'Java 11' | 'Java 17' | 'Java 21';
+    ram: number;
+    port?: number;
+    advancedFlags?: ServerAdvancedFlags;
+    modpackUrl?: string; // If applicable
+    plugins?: {
+        name: string;
+        sourceUrl?: string; // Optional reference
+    }[];
+    platformVersion: string; // CraftCommand version exported from
+}
+
+export type WebhookTrigger = 'SERVER_START' | 'SERVER_STOP' | 'SERVER_CRASH' | 'BACKUP_COMPLETE' | 'PLAYER_JOIN' | 'PLAYER_LEAVE';
+
+export interface WebhookConfig {
+    id: string;
+    url: string;
+    name: string;
+    enabled: boolean;
+    triggers: WebhookTrigger[];
+    secret?: string; // For signature validation
+    failureCount: number;
+    serverId?: string; // Target server filter
+}
+
+export interface ServerCapabilities {
+    softwareCategory: 'JAVA' | 'BEDROCK' | 'OTHER';
+    supportsPlugins: boolean;
+    supportsModpacks: boolean;
+    supportsJava: boolean;
+    supportsJvmFlags: boolean;
+    useUdpPort: boolean;
+    supportsSpark: boolean;
+    supportsSchedules: boolean;
+    recommendedPort: number;
+    binaryName: string; // e.g. 'bedrock_server.exe' or 'server.jar'
+    termMod: string; // 'Mods' vs 'Behavior Packs'
+    termPlugin: string; // 'Plugins' vs 'Add-ons'
 }

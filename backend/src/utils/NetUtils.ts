@@ -34,7 +34,7 @@ export class NetUtils {
     }
 
     /**
-     * Advanced check that tries to bind a server to the port.
+     * Advanced check that tries to bind a server to the port (TCP).
      * This is more reliable for checking "Can I start a server here?"
      */
     static async checkPortBind(port: number): Promise<boolean> {
@@ -48,6 +48,24 @@ export class NetUtils {
                 server.close(() => resolve(false));
             });
             server.listen(port);
+        });
+    }
+
+    /**
+     * Bedrock-Specific: Checks if a UDP port is available by attempting to bind a dgram socket.
+     */
+    static async checkUDPPortBind(port: number): Promise<boolean> {
+        const dgram = await import('dgram');
+        return new Promise((resolve) => {
+            const socket = dgram.createSocket('udp4');
+            socket.once('error', (err: any) => {
+                if (err.code === 'EADDRINUSE') return resolve(true);
+                resolve(false);
+            });
+            socket.once('listening', () => {
+                socket.close(() => resolve(false));
+            });
+            socket.bind(port);
         });
     }
 

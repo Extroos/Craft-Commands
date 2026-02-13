@@ -1,11 +1,16 @@
 {
-  "version": "1.9.1",
-  "title": "CraftCommand: Collab Hardening & Host Mode Sync",
+  "version": "1.10.0",
+  "title": "CraftCommand: Distributed Operations & Bedrock Integration",
   "notes": [
-    "Feature: Introduced 'Host Mode' to toggle multi-user collaboration and user management.",
-    "Improved: OperatorChat refined with PFP syncing and removal of automated system tips.",
-    "Improved: Centralized version management with version.json as the single source of truth.",
-    "Fixed: Resolved stale notification loops and hardened version comparison logic.",
-    "Stability: Enhanced SystemContext to dynamically propagate versioning across the UI."
+    "Feature: Native Minecraft Bedrock Edition (BDS) support with auto-healing and player tracking.",
+    "Feature: Introduced 'One-Click Distributed Nodes' with automated Bootstrap ZIP enrollment.",
+    "Feature: Global Operations Center (GOC) for cluster-wide telemetry and resource heatmaps.",
+    "Feature: Intelligent Scheduler for automatic, metric-based server placement.",
+    "Feature: Server Icon customization with branded defaults and real-time previews.",
+    "Feature: Embedded Monaco IDE with syntax highlighting and real-time co-presence.",
+    "Self-Healing: 'Zombie Adoption' integrated to re-acquire running server processes after restarts.",
+    "Hardening: Resolved Protocol Mismatch issues and stabilized Zero-Config HTTPS.",
+    "Consolidation: Unified Audit Logs and Schedules into the managed SQL storage system.",
+    "UX: Deep Professional UI refresh with glassmorphic aesthetics and documentation hub."
   ]
 }

@@ -1,12 +1,13 @@
 import { Server, Socket } from 'socket.io';
 import { socketAuthMiddleware } from './middleware/authMiddleware';
+import { jitterMiddleware } from './middleware/JitterMiddleware';
 import { registerBroadcasters } from './broadcasters';
 import { handleCommand } from './handlers/commandHandler';
 import { presenceTracker } from './PresenceTracker';
-import { CollabSettings, UserRole, ChatMessage, ActivityEvent } from '../../../shared/types';
+import {  CollabSettings, UserRole, ChatMessage, ActivityEvent  } from '@shared/types';
 import { serverRepository } from '../storage/ServerRepository';
 import { userRepository } from '../storage/UserRepository';
-import { systemSettingsService } from '../services/system/SystemSettingsService';
+import { systemSettingsService } from '../features/system/SystemSettingsService';
 
 export let io: Server;
 
@@ -110,7 +111,12 @@ export const setupSocket = (socketIo: Server) => {
     // 1. Setup Global Broadcasters (Service -> IO)
     registerBroadcasters(io);
 
+    // 1.5 Setup Node Agent Namespace (/agent)
+    const { setupAgentNamespace } = require('../features/nodes/NodeAgentHandler');
+    setupAgentNamespace(io);
+
     // 2. Authentication Middleware
+    io.use(jitterMiddleware);
     io.use(socketAuthMiddleware);
 
     // 3. Connection Handling

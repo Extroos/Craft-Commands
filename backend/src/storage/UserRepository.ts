@@ -1,7 +1,7 @@
 import { StorageProvider } from './StorageProvider';
 import { StorageFactory } from './StorageFactory';
-import { UserProfile } from '../../../shared/types';
-// import { systemSettingsService } from '../services/system/SystemSettingsService';
+import {  UserProfile  } from '@shared/types';
+// import { systemSettingsService } from '../features/system/SystemSettingsService';
 
 export class UserRepository implements StorageProvider<UserProfile> {
     private provider: StorageProvider<UserProfile>;

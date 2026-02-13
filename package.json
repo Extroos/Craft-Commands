@@ -1,9 +1,9 @@
 {
   "name": "craftcommand",
   "private": true,
-  "version": "1.9.1",
+  "version": "1.10.0",
+  "license": "AGPL-3.0-only",
   "author": "Extroos",
-  "type": "module",
   "scripts": {
     "dev": "concurrently \"npm run dev --prefix frontend\" \"npm run start --prefix backend\" --names \"FRONT,BACK\" --prefix-colors \"cyan,magenta\" --kill-others",
     "build": "npm run build --prefix frontend",
@@ -12,8 +12,10 @@
     "start:all": "npm run dev"
   },
   "dependencies": {
+    "@types/fs-extra": "^11.0.4",
     "@types/react-router-dom": "^5.3.3",
     "framer-motion": "^11.0.0",
+    "fs-extra": "^11.3.3",
     "jwt-decode": "^4.0.0",
     "lucide-react": "^0.563.0",
     "react": "^19.2.3",
@@ -23,10 +25,14 @@
     "socket.io-client": "^4.8.3"
   },
   "devDependencies": {
+    "@types/axios": "^0.9.36",
+    "@types/dotenv": "^6.1.1",
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.23",
+    "axios": "^1.13.5",
     "concurrently": "^9.2.1",
+    "dotenv": "^17.2.4",
     "postcss": "^8.5.6",
     "tailwindcss": "^3.4.17",
     "typescript": "~5.8.2",

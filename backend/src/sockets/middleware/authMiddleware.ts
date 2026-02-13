@@ -3,8 +3,21 @@ import jwt from 'jsonwebtoken';
 import { userRepository } from '../../storage/UserRepository';
 
 export const socketAuthMiddleware = async (socket: Socket, next: (err?: any) => void) => {
+    // Debug namespace
+    if (socket.nsp.name === '/agent') {
+        // console.log('[AuthMiddleware] Skipping global auth for /agent namespace');
+        return next();
+    }
+
     const token = socket.handshake.auth.token;
     if (!token) return next(new Error('Authentication Error: No Token'));
+
+    // E2E Test Bypass
+    if (process.env.NODE_ENV === 'test' && token === 'Bearer e2e-secret-bypass') {
+        (socket as any).userId = 'e2e-test-user';
+        (socket as any).user = { id: 'e2e-test-user', role: 'OWNER', username: 'TestUser' };
+        return next();
+    }
 
     try {
         const secret = process.env.JWT_SECRET || 'dev-secret-do-not-use-in-prod';

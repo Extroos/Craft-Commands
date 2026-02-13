@@ -1,7 +1,7 @@
 import { StorageProvider } from './StorageProvider';
 import { GenericJsonProvider } from './JsonRepository';
 import { SqliteProvider } from './SqliteProvider';
-import { systemSettingsService } from '../services/system/SystemSettingsService';
+import { systemSettingsService } from '../features/system/SystemSettingsService';
 import path from 'path';
 
 export class StorageFactory {

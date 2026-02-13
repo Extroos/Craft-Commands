@@ -1,6 +1,7 @@
 {
   "name": "craftcommand-backend",
-  "version": "1.9.1",
+  "version": "1.10.0",
+  "license": "AGPL-3.0-only",
   "author": "Extroos",
   "description": "Backend service for CraftCommand",
   "main": "src/server.ts",
@@ -38,6 +39,7 @@
   "devDependencies": {
     "@types/archiver": "^7.0.0",
     "@types/cors": "^2.8.17",
+    "@types/cross-spawn": "^6.0.6",
     "@types/express": "^4.17.21",
     "@types/fs-extra": "^11.0.4",
     "@types/jsonwebtoken": "^9.0.10",

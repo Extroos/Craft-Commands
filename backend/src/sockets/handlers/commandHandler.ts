@@ -1,8 +1,8 @@
 import { Socket } from 'socket.io';
 import fs from 'fs-extra';
 import path from 'path';
-import { permissionService } from '../../services/auth/PermissionService';
-import { processManager } from '../../services/servers/ProcessManager';
+import { permissionService } from '../../features/auth/PermissionService';
+import { processManager } from '../../features/processes/ProcessManager';
 
 const USERS_FILE = path.join(process.cwd(), 'data', 'users.json');
 
@@ -34,7 +34,7 @@ export const handleCommand = (socket: Socket, data: any) => {
         console.warn(`[Socket] Forbidden command attempt by ${user.username} for ${serverId}`);
         
         // Audit Log (Phase 2/5 Requirement)
-        import('../../services/system/AuditService').then(({ auditService }) => {
+        import('../../features/system/AuditService').then(({ auditService }) => {
             auditService.log(
                 user.id, 
                 'PERMISSION_DENIED', 

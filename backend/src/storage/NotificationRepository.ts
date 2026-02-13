@@ -1,6 +1,6 @@
 import { StorageProvider } from './StorageProvider';
 import { StorageFactory } from './StorageFactory';
-import { Notification } from '../../../shared/types';
+import {  Notification  } from '@shared/types';
 
 class NotificationRepository implements StorageProvider<Notification> {
     private provider: StorageProvider<Notification>;

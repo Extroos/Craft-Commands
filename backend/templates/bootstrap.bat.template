@@ -1,0 +1,47 @@
+@echo off
+SETLOCAL EnableDelayedExpansion
+
+:: CraftCommand Node Agent — One-Click Bootstrap
+:: Version: 1.0.0
+:: Node ID: {{NODE_ID}}
+
+echo.
+echo  [1/4] Checking environment...
+node -v >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [E] Node.js is not installed! 
+    echo Please install Node.js from https://nodejs.org/ and try again.
+    pause
+    exit /b 1
+)
+
+echo  [2/4] Initializing Node Identity...
+set NODE_ID={{NODE_ID}}
+set NODE_SECRET={{NODE_SECRET}}
+set PANEL_URL={{PANEL_URL}}
+
+echo  [3/4] Preparing Agent...
+echo      Installing dependencies...
+call npm install --omit=dev --no-audit --no-fund --loglevel=error
+if %errorlevel% neq 0 (
+    echo [E] Failed to install dependencies. Please run 'npm install' manually.
+    pause
+    exit /b 1
+)
+
+echo  [4/4] Starting CraftCommand Node Agent...
+echo.
+echo ---------------------------------------------------------
+echo   Node Name: {{NODE_NAME}}
+echo   Panel:     %PANEL_URL%
+echo ---------------------------------------------------------
+echo.
+
+:: Run the agent with the provided credentials
+node dist/index.js --node-id %NODE_ID% --secret %NODE_SECRET% --panel-url %PANEL_URL%
+
+if %errorlevel% neq 0 (
+    echo.
+    echo [E] Agent exited with error code %errorlevel%
+    pause
+)

@@ -1,44 +1,45 @@
 // CraftCommand Management App
 import React, { useState } from 'react';
 import { AnimatePresence, motion, MotionConfig } from 'framer-motion';
-import Header from './components/Layout/Header';
-import Dashboard from './components/Views/Dashboard';
-import Console from './components/Views/Console';
-import Architect from './components/Views/Architect';
-import FileManager from './components/Views/FileManager';
-import PlayerManager from './components/Views/PlayerManager';
-import PluginManager from './components/Views/PluginManager';
-import BackupManager from './components/Views/BackupManager';
-import ScheduleManager from './components/Views/ScheduleManager';
-import SettingsManager from './components/Views/SettingsManager';
-import Integrations from './components/Views/Integrations';
-import AccessControl from './components/Views/AccessControl';
-import UserProfileView from './components/Views/UserProfile';
-import UsersPage from './components/Views/UsersPage';
-import GlobalSettingsView from './components/Views/GlobalSettings';
-import AuditLog from './components/Views/AuditLog';
-import Login from './components/Auth/Login';
-import ServerSelection from './components/Server/ServerSelection';
-import CreateServer from './components/Server/CreateServer';
-import PageBackground from './components/UI/PageBackground';
+import Header from './features/ui/Header';
+import Dashboard from './features/dashboard/Dashboard';
+import Console from './features/servers/Console';
+import Architect from './features/installer/Architect';
+import FileManager from './features/files/FileManager';
+import PlayerManager from './features/servers/PlayerManager';
+import PluginManager from './features/plugins/PluginManager';
+import BackupManager from './features/backups/BackupManager';
+import ScheduleManager from './features/scheduling/ScheduleManager';
+import SettingsManager from './features/servers/SettingsManager';
+import Integrations from './features/integrations/Integrations';
+import AccessControl from './features/auth/AccessControl';
+import UserProfileView from './features/auth/UserProfile';
+import UsersPage from './features/auth/UsersPage';
+import GlobalSettingsView from './features/system/GlobalSettings';
+import AuditLog from './features/auth/AuditLog';
+import Login from './features/auth/Login';
+import ServerSelection from './features/servers/ServerSelection';
+import CreateServer from './features/servers/CreateServer/index';
+import GlobalOperations from './features/system/GlobalOperations';
+import PageBackground from './features/ui/PageBackground';
 
-import StatusPage from './components/Public/StatusPage';
+import StatusPage from './features/servers/StatusPage';
 import { TabView, AppState, ServerConfig } from '@shared/types';
-import { ToastProvider } from './components/UI/Toast';
-import ErrorBoundary from './components/UI/ErrorBoundary';
-import { UserProvider, useUser } from './context/UserContext';
-import { ThemeProvider } from './context/ThemeContext';
+import { ToastProvider } from './features/ui/Toast';
+import ErrorBoundary from './features/ui/ErrorBoundary';
+import { UserProvider, useUser } from './features/auth/context/UserContext';
+import { ThemeProvider } from './features/ui/context/ThemeContext';
 
-import { ServerProvider, useServers } from './context/ServerContext';
-import { NotificationProvider } from './context/NotificationContext';
-import { CollaborationProvider } from './context/CollaborationContext';
-import { SystemProvider, useSystem } from './context/SystemContext';
-import OperatorChat from './components/Collab/OperatorChat';
+import { ServerProvider, useServers } from './features/servers/context/ServerContext';
+import { NotificationProvider } from './features/system/context/NotificationContext';
+import { CollaborationProvider } from './features/collaboration/context/CollaborationContext';
+import { SystemProvider, useSystem } from './features/system/context/SystemContext';
+import OperatorChat from './features/collaboration/OperatorChat';
 
 const AppContent: React.FC = () => {
     const { user, isAuthenticated, logout: authLogout, isLoading: authLoading } = useUser();
     const { servers, currentServer, setCurrentServerById, isLoading: serversLoading } = useServers();
-    const { version } = useSystem();
+    const { version, settings } = useSystem();
     
     // Initialize State - ALWAYS start at LOGIN for fresh console starts
     const [appState, setAppState] = useState<AppState>('LOGIN');
@@ -48,7 +49,7 @@ const AppContent: React.FC = () => {
     // Unified Navigation Handler (Fixes navigation regression v1.7.7)
     const handleNavigateView = (tab: TabView) => {
         setActiveTab(tab);
-        const globalViews: AppState[] = ['USER_PROFILE', 'GLOBAL_SETTINGS', 'USER_MANAGEMENT', 'AUDIT_LOG'];
+        const globalViews: AppState[] = ['USER_PROFILE', 'GLOBAL_SETTINGS', 'USER_MANAGEMENT', 'AUDIT_LOG', 'GLOBAL_OPERATIONS'];
         if (globalViews.includes(appState) && currentServer) {
             setAppState('MANAGE_SERVER');
         }
@@ -190,7 +191,6 @@ const AppContent: React.FC = () => {
         if (appState === 'PUBLIC_STATUS') {
             return <StatusPage onNavigateLogin={() => setAppState('LOGIN')} />;
         }
-
         if (appState === 'SERVER_SELECTION') {
             return (
                 <ServerSelection 
@@ -201,6 +201,7 @@ const AppContent: React.FC = () => {
                     onNavigateUsers={() => setAppState('USER_MANAGEMENT')}
                     onNavigateGlobalSettings={() => setAppState('GLOBAL_SETTINGS')}
                     onNavigateAuditLog={() => setAppState('AUDIT_LOG')}
+                    onNavigateOperations={() => setAppState('GLOBAL_OPERATIONS')}
                 />
             );
         }
@@ -226,9 +227,10 @@ const AppContent: React.FC = () => {
                         onNavigateUsers={() => setAppState('USER_MANAGEMENT')}
                         onNavigateGlobalSettings={() => setAppState('GLOBAL_SETTINGS')}
                         onNavigateAuditLog={() => setAppState('AUDIT_LOG')}
+                        onNavigateOperations={() => setAppState('GLOBAL_OPERATIONS')}
                         currentServer={currentServer}
                     />
-                    <main className="flex-1 px-4 sm:px-6 lg:px-8 w-full max-w-7xl mx-auto py-8">
+                    <main className="flex-1 px-4 sm:px-6 lg:px-8 w-full max-w-7xl mx-auto py-8 pt-24">
                         <UsersPage />
                     </main>
                 </div>
@@ -246,9 +248,10 @@ const AppContent: React.FC = () => {
                         onNavigateProfile={() => setAppState('USER_PROFILE')}
                         onNavigateUsers={() => setAppState('USER_MANAGEMENT')}
                         onNavigateGlobalSettings={() => setAppState('GLOBAL_SETTINGS')}
+                        onNavigateOperations={() => setAppState('GLOBAL_OPERATIONS')}
                         currentServer={currentServer}
                     />
-                    <main className="flex-1 px-4 sm:px-6 lg:px-8 w-full">
+                    <main className="flex-1 px-4 sm:px-6 lg:px-8 w-full pt-20">
                         <UserProfileView />
                     </main>
                 </div>
@@ -269,7 +272,7 @@ const AppContent: React.FC = () => {
                         onNavigateAuditLog={() => setAppState('AUDIT_LOG')}
                         currentServer={currentServer}
                     />
-                    <main className="flex-1 px-4 sm:px-6 lg:px-8 w-full py-8">
+                    <main className="flex-1 px-4 sm:px-6 lg:px-8 w-full py-8 pt-24">
                         <GlobalSettingsView />
                     </main>
                 </div>
@@ -290,9 +293,35 @@ const AppContent: React.FC = () => {
                         onNavigateAuditLog={() => setAppState('AUDIT_LOG')}
                         currentServer={currentServer}
                     />
-                    <main className="flex-1 px-4 sm:px-6 lg:px-8 w-full py-8">
+                    <main className="flex-1 px-4 sm:px-6 lg:px-8 w-full py-8 pt-24">
                         <AuditLog />
                     </main>
+                </div>
+            );
+        }
+
+        if (appState === 'GLOBAL_OPERATIONS') {
+            if (settings && !settings.app.distributedNodes?.enabled) {
+                setAppState('SERVER_SELECTION');
+                return null;
+            }
+            return (
+                <div className="min-h-screen text-foreground antialiased selection:bg-primary/20 selection:text-primary flex flex-col relative overflow-hidden">
+                     <Header 
+                        activeTab={activeTab} 
+                        setActiveTab={handleNavigateView} 
+                        onBackToServerList={handleBackToServerList}
+                        onLogout={handleLogout}
+                        onNavigateProfile={() => setAppState('USER_PROFILE')}
+                        onNavigateUsers={() => setAppState('USER_MANAGEMENT')}
+                        onNavigateGlobalSettings={() => setAppState('GLOBAL_SETTINGS')}
+                        onNavigateAuditLog={() => setAppState('AUDIT_LOG')}
+                        onNavigateOperations={() => setAppState('GLOBAL_OPERATIONS')}
+                        currentServer={currentServer}
+                    />
+                    <main className="flex-1 w-full max-w-7xl mx-auto py-8 pt-24">
+                    <GlobalOperations onNavigate={(state) => setAppState(state)} />
+                </main>
                 </div>
             );
         }
@@ -308,10 +337,11 @@ const AppContent: React.FC = () => {
                     onNavigateUsers={() => setAppState('USER_MANAGEMENT')}
                     onNavigateGlobalSettings={() => setAppState('GLOBAL_SETTINGS')}
                     onNavigateAuditLog={() => setAppState('AUDIT_LOG')}
+                    onNavigateOperations={() => setAppState('GLOBAL_OPERATIONS')}
                     currentServer={currentServer}
                 />
                 
-                <main className="flex-1 py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full">
+                <main className="flex-1 py-8 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full pt-20">
                     {currentServer ? (
                         <ErrorBoundary key={currentServer.id}>
                             <AnimatePresence mode="wait">
@@ -356,7 +386,7 @@ const AppContent: React.FC = () => {
                         <div className="flex items-center gap-2 italic">
                             CraftCommand Protocol v{version}
                         </div>
-                        <div>Licensed under MIT &copy; 2026 Extroos</div>
+                        <div>Licensed under AGPLv3 &copy; 2026 Extroos</div>
                     </div>
                 </footer>
             </div>

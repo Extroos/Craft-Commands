@@ -17,23 +17,23 @@ import { setupSocket } from './sockets';
 // But we need to inject IO first.
 
 import { logger } from './utils/logger';
-import { getServers, startServer } from './services/servers/ServerService';
-import { javaManager } from './services/servers/JavaManager';
-import { processManager } from './services/servers/ProcessManager';
-import { fileWatcherService } from './services/files/FileWatcherService';
-import { discordService } from './services/integrations/DiscordService';
-import { systemSettingsService } from './services/system/SystemSettingsService';
-import { autoHealingService } from './services/servers/AutoHealingService';
-import { updateService } from './services/system/UpdateService';
+import { getServers, startServer } from './features/servers/ServerService';
+import { javaManager } from './features/processes/JavaManager';
+import { processManager } from './features/processes/ProcessManager';
+import { fileWatcherService } from './features/files/FileWatcherService';
+import { discordService } from './features/integrations/DiscordService';
+import { systemSettingsService } from './features/system/SystemSettingsService';
+import { autoHealingService } from './features/servers/AutoHealingService';
+import { updateService } from './features/system/UpdateService';
+import { errorHandler } from './middleware/errorHandler';
 import os from 'os';
 
 import { sslUtils } from './utils/ssl';
+import { setSystemStatus, protocol, sslStatus } from './features/system/SystemStatusState';
 
 const app = express();
 const settings = systemSettingsService.getSettings();
 let httpServer: any;
-let protocol = 'http';
-let sslStatus: 'VALID' | 'SELF_SIGNED' | 'NONE' = 'NONE';
 
 const initHttpServer = async () => {
     if (settings.app.https?.enabled && settings.app.https.mode !== 'bridge') {
@@ -52,21 +52,23 @@ const initHttpServer = async () => {
                 passphrase: settings.app.https.passphrase 
             }, app);
             
-            protocol = 'https';
-            sslStatus = isSelfSigned ? 'SELF_SIGNED' : 'VALID';
-            logger.info(`SECURE MODE: HTTPS Enabled (${sslStatus}).`);
+            const currentProtocol = 'https';
+            const currentSslStatus = isSelfSigned ? 'SELF_SIGNED' : 'VALID';
+            setSystemStatus(currentProtocol, currentSslStatus);
+            logger.info(`SECURE MODE: HTTPS Enabled (${currentSslStatus}).`);
         } catch (e: any) {
             logger.error(`HTTPS Failed to start: ${e.message}`);
             logger.warn('Falling back to HTTP.');
             httpServer = createServer(app);
-            sslStatus = 'NONE';
+            setSystemStatus('http', 'NONE');
         }
     } else {
         httpServer = createServer(app);
+        setSystemStatus('http', 'NONE');
     }
 };
 
-import { remoteAccessService } from './services/system/RemoteAccessService';
+import { remoteAccessService } from './features/system/RemoteAccessService';
 
 const PORT = process.env.BACKEND_PORT ? parseInt(process.env.BACKEND_PORT) : 3001;
 const BIND_IP = remoteAccessService.getBindAddress();
@@ -108,6 +110,10 @@ const startup = async () => {
         await remoteAccessService.initialize();
         autoHealingService.initialize();
         updateService.initialize();
+        
+        // Start Embedded Agent (if enabled)
+        const { localAgentManager } = await import('./features/nodes/LocalAgentManager');
+        localAgentManager.initialize();
     } catch (e: any) {
         logger.error(`Service initialization failed: ${e.message}`);
     }
@@ -184,6 +190,65 @@ const startMain = async () => {
     });
 
     setupRoutes(app);
+
+    // Serve Web Dashboard (SPA)
+    const { WEB_ROOT } = require('./constants');
+    if (fs.existsSync(WEB_ROOT) && fs.existsSync(path.join(WEB_ROOT, 'index.html'))) {
+        logger.info(`[Server] Serving Web Dashboard from: ${WEB_ROOT}`);
+        app.use(express.static(WEB_ROOT));
+        app.get('*', (req, res) => {
+            res.sendFile(path.join(WEB_ROOT, 'index.html'));
+        });
+    } else {
+        logger.warn('[Server] Web Dashboard index.html not found. Serving Recovery UI.');
+        app.get('*', (req, res) => {
+            res.send(`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>CraftCommand Recovery</title>
+                    <style>
+                        body { font-family: sans-serif; background: #0f172a; color: white; display: flex; align-items: center; justify-content: center; height: 100vh; margin: 0; }
+                        .card { background: #1e293b; padding: 2rem; border-radius: 1rem; text-align: center; border: 1px solid #334155; max-width: 400px; }
+                        h1 { color: #f43f5e; }
+                        button { background: #3b82f6; border: none; color: white; padding: 0.75rem 1.5rem; border-radius: 0.5rem; cursor: pointer; font-weight: bold; }
+                        button:hover { background: #2563eb; }
+                    </style>
+                </head>
+                <body>
+                    <div class="card">
+                        <h1>UI Not Found</h1>
+                        <p>The Web Dashboard assets are missing or corrupted.</p>
+                        <p>Click below to synchronize the latest assets from the repository.</p>
+                        <button onclick="runUpdate()">Update Web (BETA)</button>
+                        <p id="status" style="margin-top: 1rem; font-size: 0.9rem; color: #94a3b8;"></p>
+                    </div>
+                    <script>
+                        async function runUpdate() {
+                             const btn = document.querySelector('button');
+                             const status = document.getElementById('status');
+                             btn.disabled = true;
+                             status.innerText = 'Synchronizing... (Check backend logs)';
+                             
+                             // Since we don't have a token here (this is a public recovery page),
+                             // the actual /api/system/update-web/run is protected.
+                             // RECOVERY LOGIC: For security, the recovery page should probably
+                             // link to documentation or require a physical button press on the server.
+                             // BUT for this UX, we want it to work if the user is local.
+                             // COMPROMISE: We will provide a link to the launcher instructions or 
+                             // a specialized unprotected recovery endpoint if we decide to add one.
+                             status.innerText = 'Please run "run_locally.bat" to synchronize assets automatically on startup.';
+                        }
+                    </script>
+                </body>
+                </html>
+            `);
+        });
+    }
+
+    // Global Error Handler
+    app.use(errorHandler);
+
     setupSocket(io);
 
     httpServer.listen(PORT, BIND_IP, async () => {
