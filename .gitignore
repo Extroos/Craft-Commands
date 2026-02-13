@@ -72,8 +72,8 @@ pids/
 *.pid.lock
 
 # Specific Malformed Patterns (Cleanup)
-*html*
-*ponents*
+backend/*.html
+backend/scripts/ponents/
 
 # Binary & Large Files (Universal)
 *.exe
