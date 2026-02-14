@@ -3,7 +3,7 @@ setlocal enabledelayedexpansion
 cd /d "%~dp0"
 
 :: --- SMART VERSION SYNC ---
-set "CC_VERSION=v1.10.0"
+set "CC_VERSION=v1.10.1"
 if exist "version.json" (
     for /f "tokens=2 delims=:," %%a in ('findstr "version" version.json') do (
         set "VERSION_VAL=%%~a"
@@ -111,7 +111,7 @@ echo  ^| $$__/  \^| $$     ^| $$     ^| $$__/  ^| $$__/ $^| $$ ^| $$ ^| $$^|  $$
 echo   \$$    $$^| $$     ^| $$      \$$    $$\$$    $$^| $$ ^| $$ ^| $$ \$$    $$^| $$  ^| $$    
 echo    \$$$$$$  \$$      \$$       \$$$$$$  \$$$$$$  \$$  \$$  \$$  \$$$$$$$ \$$   \$$    
 echo.
-%CE_CYAN% "  :::::::::::::::::::::::: PRO PLATFORM v1.10.0 :::::::::::::::::::::::::"
+%CE_CYAN% "  :::::::::::::::::::::::: SMART PLATFORM :::::::::::::::::::::::::"
 echo.
 
 :: --- SYSTEM DASHBOARD ---
@@ -125,22 +125,22 @@ echo.
 echo.
 
 %CE_WHITE% "  [ OPERATION ]"
-echo    [1]  Launch Protocol (Start Server)
+echo    [1]  Launch Protocol (Run Website ^& Servers)
 echo.
-%CE_WHITE% "  [ NETWORK AND SECURITY ]"
-echo    [2]  Secure Direct Access (HTTPS Config)
-echo    [3]  Remote Bridge Wizard (Public Access)
+%CE_WHITE% \"  [ NETWORK AND SECURITY ]\"
+echo    [2]  Secure Direct Access (Set up HTTPS)
+echo    [3]  Remote Bridge Wizard (Share with Friends)
 echo.
-%CE_WHITE% "  [ MAINTENANCE AND AUDIT ]"
-echo    [4]  Stability Audit (System Check)
-echo    [5]  Maintenance Mode (Fix/Reinstall)
+%CE_WHITE% \"  [ MAINTENANCE AND AUDIT ]\"
+echo    [4]  Stability Audit (Check for Errors)
+echo    [5]  Maintenance Mode (Fix Broken Apps)
 echo    [6]  Launch Node Agent (Remote Worker)
 echo.
-%CE_WHITE% "  [ EXIT ]"
-echo    [8]  Panic Control (Emergency Network Reset)
+%CE_WHITE% \"  [ EMERGENCY ]\"
+echo    [8]  Panic Control (Instantly Cut External Connections)
 echo    [7]  Terminate Session (Exit)
 echo.
-%CE_PROMPT% "  > Select Command: "
+%CE_PROMPT% \"  > Select Command: \"
 set /p choice=""
 
 if "%choice%"=="1" goto START
@@ -207,7 +207,7 @@ if !errorlevel! equ 0 set "B_TYPE=TUNNEL (Playit)"
 echo.
 %CE_CYAN% "----------------------------------------------------"
 %CE_WHITE% -NoNewline "  Protocol:     "
-%CE_GREEN% "!B_TYPE!"
+%CE_GREEN% \"!B_TYPE!\"
 echo.
 
 set "ACC_URL=http://localhost:3000"
@@ -255,7 +255,7 @@ echo.
 echo    [5]  Decommission Bridge (Disable)
 echo    [6]  Abort (Go Back)
 echo.
-%CE_PROMPT% "  > Select Method: "
+%CE_PROMPT% \"  > Select Method: \"
 set /p r_choice=""
 
 if "%r_choice%"=="1" (
@@ -294,7 +294,7 @@ echo    [2]  Decommission HTTPS Bridge (Back to HTTP)
 echo    [3]  Manual PEM/CRT Binding (Internal)
 echo    [4]  Return to Protocol
 echo.
-%CE_PROMPT% "  > Select Option: "
+%CE_PROMPT% \"  > Select Option: \"
 set /p h_choice=""
 
 if "%h_choice%"=="1" goto PROTOCOL_PROXY
@@ -313,7 +313,7 @@ cls
 echo.
 %CE_GREEN% "[Automated HTTPS Setup]"
 echo.
-%CE_PROMPT% " > Domain Name (e.g. myserver.com): "
+%CE_PROMPT% \" > Domain Name (e.g. myserver.com): \"
 set /p DOMAIN=""
 call node scripts/ops/install-caddy.js
 call node scripts/ops/manage-caddy.js setup !DOMAIN!
@@ -327,11 +327,11 @@ cls
 echo.
 %CE_MAGENTA% "[Manual SSL Binding]"
 echo.
-%CE_PROMPT% " > Path to Cert (.pem/.crt): "
+%CE_PROMPT% \" > Path to Cert (.pem/.crt): \"
 set /p CERT_PATH=""
-%CE_PROMPT% " > Path to Private Key (.key): "
+%CE_PROMPT% \" > Path to Private Key (.key): \"
 set /p KEY_PATH=""
-%CE_PROMPT% " > Key Passphrase (optional): "
+%CE_PROMPT% \" > Key Passphrase (optional): \"
 set /p PASSPHRASE=""
 call node scripts/maintenance/setup-https.js "!CERT_PATH!" "!KEY_PATH!" "!PASSPHRASE!"
 pause
@@ -342,14 +342,23 @@ cls
 echo.
 %CE_RED% " [PANIC CONTROL - NETWORK RESET] "
 echo.
+%CE_GRAY% " Killing active bridges..."
 taskkill /f /im caddy.exe >nul 2>nul
 taskkill /f /im playit.exe >nul 2>nul
 taskkill /f /im cloudflared.exe >nul 2>nul
-call node scripts/ops/emergency-disable-remote.js
 echo.
-%CE_GREEN% "[Success] "
-%CE_WHITE% "Isolation complete."
-timeout /t 3 >nul
+%CE_GRAY% " Updating security registry..."
+call node scripts/ops/emergency-disable-remote.js
+if %errorlevel% neq 0 (
+    echo.
+    %CE_RED% " [Error] "
+    %CE_WHITE% " Failed to isolate system. Please check settings.json manually."
+) else (
+    echo.
+    %CE_GREEN% " [Success] "
+    %CE_WHITE% " Isolation complete. Your dashboard is now local-only."
+)
+timeout /t 5 >nul
 goto MENU
 
 :: ====================================================================================
@@ -358,11 +367,11 @@ goto MENU
 :STABILITY_CHECK
 cls
 echo.
-%CE_CYAN% "[SYSTEM STABILITY AUDIT]"
+%CE_CYAN% \" [SYSTEM STABILITY AUDIT] \"
 echo.
-%CE_GRAY% " This will perform a deep scan of your network protocol and local IP detection."
+%CE_GRAY% \" This will perform a deep scan of your network protocol and local IP detection. \"
 echo.
-node scripts/user_verification_test.ts
+npx ts-node scripts/user_verification_test.ts
 echo.
 pause
 goto MENU
@@ -370,19 +379,32 @@ goto MENU
 :REINSTALL
 cls
 echo.
-%CE_RED% " [MAINTENANCE MODE] "
+%CE_RED% \" [MAINTENANCE MODE] \"
 echo.
-%CE_PROMPT% " Confirm Flush/Reinstall? (y/n): "
-set /p confirm=""
-if not "%confirm%"=="y" goto MENU
-if exist "frontend\node_modules" rmdir /s /q "frontend\node_modules"
-if exist "backend\node_modules" rmdir /s /q "backend\node_modules"
-if exist "node_modules" rmdir /s /q "node_modules"
-cd frontend && call npm install >nul 2>nul && cd ..
-cd backend && call npm install >nul 2>nul && cd ..
-call npm install >nul 2>nul
-%CE_GREEN% "[Success] "
-%CE_WHITE% "System restored."
+set confirm=
+%CE_PROMPT% \" Confirm Flush/Reinstall? (y/n): \"
+set /p confirm=\"\"
+if /i not \"!confirm!\"==\"y\" goto MENU
+
+echo.
+%CE_YELLOW% \" [1/3] Flushing dependencies...\"
+if exist \"frontend\\node_modules\" rmdir /s /q \"frontend\\node_modules\"
+if exist \"backend\\node_modules\" rmdir /s /q \"backend\\node_modules\"
+if exist \"node_modules\" rmdir /s /q \"node_modules\"
+
+echo.
+%CE_YELLOW% \" [2/3] Reinstalling Frontend...\"
+cd frontend && call npm install && cd ..
+
+echo.
+%CE_YELLOW% \" [3/3] Reinstalling Backend ^& Core...\"
+cd backend && call npm install && cd ..
+call npm install
+
+echo.
+%CE_GREEN% \" [Success] \"
+%CE_WHITE% \" System restored and dependencies synchronized.\"
+echo.
 pause
 goto MENU
 
@@ -391,9 +413,9 @@ cls
 echo.
 %CE_CYAN% "[NODE AGENT LAUNCHER]"
 echo.
-%CE_PROMPT% " > Enter Node ID: "
+%CE_PROMPT% \" > Enter Node ID: \"
 set /p N_ID=""
-%CE_PROMPT% " > Enter Secret: "
+%CE_PROMPT% \" > Enter Node Secret: \"
 set /p N_SEC=""
 
 if "%N_ID%"=="" goto MENU

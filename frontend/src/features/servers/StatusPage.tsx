@@ -1,162 +1,121 @@
-
 import React, { useEffect, useState, useMemo } from 'react';
-
 import { ServerConfig, ServerStatus } from '@shared/types';
 import { API } from '@core/services/api';
-
-import { Activity, Users, Copy, Check, ArrowRight, ShieldCheck, Globe, Server, Wifi, WifiOff } from 'lucide-react';
+import { Globe, Server, Check, ArrowRight, Activity, Copy, Shield, Cpu, Network } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface StatusPageProps {
     onNavigateLogin: () => void;
 }
 
-// Optimized Bar Component: Renders once, animates forever via GPU
-const UptimeBar = React.memo(({ index, isOnline }: { index: number, isOnline: boolean }) => {
-    // Generate deterministic random values based on index so they look random but don't change on re-renders
-    const randomHeight1 = 30 + ((index * 7) % 40); 
-    const randomHeight2 = 50 + ((index * 3) % 50);
-    const duration = 1.2 + (index % 5) * 0.1;
-
-    return (
-        <motion.div
-            initial={{ height: "20%", opacity: 0.3 }}
-            animate={isOnline ? {
-                height: [`20%`, `${randomHeight1}%`, `30%`, `${randomHeight2}%`, `20%`],
-                opacity: [0.3, 0.8, 0.3]
-            } : { 
-                height: "10%", 
-                opacity: 0.1 
-            }}
-            transition={isOnline ? {
-                duration: duration,
-                repeat: Infinity,
-                repeatType: "reverse",
-                ease: "easeInOut",
-                delay: index * 0.05
-            } : { duration: 0.5 }}
-            className={`w-1.5 rounded-sm ${isOnline ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]' : 'bg-rose-500/20'}`}
-        />
-    );
-});
-
-// Memoized Card: Prevents re-rendering (and animation stutter) when parent polls data
-const ServerCard = React.memo(({ server }: { server: ServerConfig }) => {
+// Magnetic Card Component for that "Arty" interactive feel
+const StatusCard = React.memo(({ server }: { server: ServerConfig }) => {
     const [copied, setCopied] = useState(false);
     const isOnline = server.status === ServerStatus.ONLINE;
     
-    // Simulate stable player count for demo consistency
+    // Stable player count simulation
     const players = useMemo(() => isOnline ? Math.floor(Math.random() * 5) + 1 : 0, [isOnline]);
 
     const handleCopy = () => {
-        navigator.clipboard.writeText(`${server.ip || '127.0.0.1'}:${server.port}`);
+        const host = server.network?.hostname || server.ip || '127.0.0.1';
+        navigator.clipboard.writeText(`${host}:${server.port}`);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
     };
 
     return (
         <motion.div
-            layout="position"
-            initial={{ opacity: 0, y: 10 }}
+            layout
+            initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
-            className="bg-[#121214]/60 backdrop-blur-md border border-[rgb(var(--color-border-subtle))] rounded-2xl p-6 md:p-8 flex flex-col md:flex-row items-start md:items-center justify-between gap-6 hover:bg-[#121214]/80 transition-colors shadow-xl group relative overflow-hidden"
+            whileHover={{ scale: 1.01, y: -5 }}
+            className="group relative"
         >
-            {/* Status Accent Line */}
-            <div className={`absolute left-0 top-0 bottom-0 w-1 transition-colors duration-500 ${isOnline ? 'bg-emerald-500 shadow-[0_0_20px_#10b981]' : 'bg-rose-500/50'}`} />
-
-            <div className="flex items-start gap-5 flex-1 z-10">
-                <div className="relative">
-                    <div className={`w-14 h-14 rounded-2xl flex items-center justify-center border transition-colors duration-500 ${
-                        isOnline ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-500' : 'bg-zinc-900/50 border-[rgb(var(--color-border-subtle))] text-[rgb(var(--color-fg-subtle))]'
-                    }`}>
-                        <Server size={28} />
-                    </div>
-                    {isOnline && (
-                        <span className="absolute -top-1.5 -right-1.5 flex h-4 w-4">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                            <span className="relative inline-flex rounded-full h-4 w-4 bg-emerald-500 border-2 border-[#09090b]"></span>
-                        </span>
-                    )}
-                </div>
-                
-                <div>
-                    <div className="flex items-center gap-3 mb-1.5">
-                        <h3 className="text-xl font-bold text-white tracking-tight">{server.name}</h3>
-                        <div className={`text-[10px] font-bold px-2 py-0.5 rounded border uppercase tracking-wider flex items-center gap-1.5 ${
-                            isOnline 
-                            ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/10' 
-                            : 'bg-rose-500/10 text-rose-500 border-rose-500/10'
-                        }`}>
-                            {isOnline ? <Wifi size={10} /> : <WifiOff size={10} />}
-                            {isOnline ? 'Online' : 'Offline'}
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-3 text-sm text-muted-foreground/60 font-mono">
-                        <span className="bg-white/5 px-2 py-0.5 rounded text-[rgb(var(--color-fg-muted))]">{server.software} {server.version}</span>
-                        <span className="w-1 h-1 bg-white/20 rounded-full"></span>
-                        <span className="truncate max-w-[200px]">{server.motd || 'System operational'}</span>
-                    </div>
-                </div>
-            </div>
-
-            <div className="flex items-center gap-8 w-full md:w-auto border-t md:border-t-0 border-[rgb(var(--color-border-subtle))] pt-6 md:pt-0 z-10">
-                {/* Optimized Uptime Graph */}
-                <div className="hidden lg:flex items-end gap-1 h-10 w-48 opacity-80">
-                    {[...Array(20)].map((_, i) => (
-                        <UptimeBar key={i} index={i} isOnline={isOnline} />
-                    ))}
-                </div>
-
-                {/* Stats & Connect */}
-                <div className="flex items-center gap-6 ml-auto">
-                    <div className="text-right">
-                        <div className="text-[10px] text-muted-foreground uppercase tracking-widest font-bold mb-0.5 opacity-50">Players</div>
-                        <div className="text-xl font-mono font-bold text-white flex items-center gap-2 justify-end">
-                            <Users size={16} className={isOnline ? "text-emerald-500" : "text-zinc-700"} />
-                            <span className={isOnline ? "text-white" : "text-[rgb(var(--color-fg-subtle))]"}>{players}</span>
-                            <span className="text-muted-foreground/30 text-base">/{server.maxPlayers}</span>
-                        </div>
-                    </div>
-
-                    <button 
-                        onClick={handleCopy}
-                        className="group/btn relative px-5 py-2.5 bg-zinc-900 hover:bg-zinc-800 border border-[rgb(var(--color-border-default))] hover:border-emerald-500/50 rounded-xl transition-all active:scale-95"
-                    >
-                        <div className="flex items-center gap-2 font-mono text-sm text-emerald-400 font-bold">
-                            {copied ? (
-                                <motion.span 
-                                    initial={{ opacity: 0, scale: 0.8 }} 
-                                    animate={{ opacity: 1, scale: 1 }}
-                                    className="flex items-center gap-2 text-white"
-                                >
-                                    <Check size={14} /> Copied
-                                </motion.span>
-                            ) : (
-                                <>
-                                    <span className="opacity-70 group-hover/btn:opacity-100 transition-opacity text-white group-hover/btn:text-emerald-400">
-                                        {server.ip || 'localhost'}:{server.port}
-                                    </span>
-                                    <Copy size={14} className="opacity-50 group-hover/btn:opacity-100" />
-                                </>
+            <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 rounded-[2rem] blur-2xl -z-10" />
+            
+            <div className="backdrop-blur-3xl bg-[#121214]/60 border border-white/5 rounded-[1.5rem] p-6 transition-all duration-500 hover:border-white/10 shadow-[0_24px_48px_-12px_rgba(0,0,0,0.4)]">
+                <div className="flex flex-col md:flex-row gap-8 items-start md:items-center justify-between">
+                    
+                    {/* Left: Identity & Heartbeat */}
+                    <div className="flex items-center gap-6">
+                        <div className="relative">
+                            <div className={`w-14 h-14 rounded-xl flex items-center justify-center border transition-all duration-700 ${
+                                isOnline 
+                                ? 'bg-emerald-500/5 border-emerald-500/10 text-emerald-500' 
+                                : 'bg-white/5 border-white/5 text-white/20'
+                            }`}>
+                                <Server size={28} strokeWidth={1.5} />
+                            </div>
+                            {isOnline && (
+                                <motion.div 
+                                    animate={{ scale: [1, 1.5, 1], opacity: [0.5, 0, 0.5] }}
+                                    transition={{ duration: 2, repeat: Infinity }}
+                                    className="absolute inset-0 bg-emerald-500/20 rounded-2xl -z-10" 
+                                />
                             )}
                         </div>
+                        
+                        <div>
+                            <div className="flex items-center gap-2 mb-1">
+                                <h3 className="text-xl font-bold text-white tracking-tight leading-none">{server.name}</h3>
+                                <div className={`w-1.5 h-1.5 rounded-full ${isOnline ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]' : 'bg-white/10'}`} />
+                            </div>
+                            <div className="flex items-center gap-3 text-[9px] font-bold uppercase tracking-[0.2em] text-white/30">
+                                <span className="flex items-center gap-1.5"><Network size={9} /> {server.software}</span>
+                                <span className="w-0.5 h-0.5 bg-white/10 rounded-full" />
+                                <span className="flex items-center gap-1.5 font-mono">{server.version}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    {/* Center: Specs Grid (Asymmetric) */}
+                    <div className="grid grid-cols-2 gap-x-12 gap-y-2 border-l border-white/5 pl-8 hidden lg:grid">
+                        <div>
+                            <p className="text-[9px] uppercase tracking-[0.3em] font-black text-white/20 mb-1">Utilization</p>
+                            <p className={`font-mono text-sm ${isOnline ? 'text-emerald-400' : 'text-white/20'}`}>
+                                {isOnline ? `${players}/${server.maxPlayers}` : '--'}
+                            </p>
+                        </div>
+                        <div>
+                            <p className="text-[9px] uppercase tracking-[0.3em] font-black text-white/20 mb-1">Latency</p>
+                            <p className={`font-mono text-sm ${isOnline ? 'text-white/60' : 'text-white/20'}`}>
+                                {isOnline ? '12ms' : '--'}
+                            </p>
+                        </div>
+                    </div>
+
+                    {/* Right: Connect Action */}
+                    <button 
+                        onClick={handleCopy}
+                        className="relative group/btn overflow-hidden px-6 py-3 rounded-xl bg-white text-black font-black text-[10px] uppercase tracking-[0.2em] transition-all hover:brightness-95 active:scale-[0.98] shadow-lg shadow-black/20"
+                    >
+                        <span className="relative z-10 flex items-center gap-2">
+                            {copied ? (
+                                <><Check size={12} /> Copied</>
+                            ) : (
+                                <><Globe size={12} /> {server.network?.hostname || server.ip || 'localhost'}:{server.port}</>
+                            )}
+                        </span>
                     </button>
+                </div>
+
+                {/* Bottom: Subtle Status Meta */}
+                <div className="mt-8 pt-6 border-t border-white/5 flex justify-between items-center opacity-40">
+                    <p className="text-[9px] font-mono tracking-widest uppercase">{server.motd || 'Core systems functional'}</p>
+                    <div className="flex items-center gap-4 text-[9px] font-mono">
+                        <span className="text-emerald-500">SECURE_LINKv4</span>
+                        <span>0x{server.id.slice(0, 8).toUpperCase()}</span>
+                    </div>
                 </div>
             </div>
         </motion.div>
     );
-}, (prev, next) => {
-    // Custom comparison for performance: only re-render if deep properties change
-    return prev.server.status === next.server.status && 
-           prev.server.name === next.server.name &&
-           prev.server.motd === next.server.motd;
 });
 
 const StatusPage: React.FC<StatusPageProps> = ({ onNavigateLogin }) => {
     const [servers, setServers] = useState<ServerConfig[]>([]);
+    const [isHolding, setIsHolding] = useState(false);
 
-
-    // Optimized Polling: No forced re-renders (tick state removed)
     useEffect(() => {
         const fetch = async () => {
             try {
@@ -169,107 +128,189 @@ const StatusPage: React.FC<StatusPageProps> = ({ onNavigateLogin }) => {
         return () => clearInterval(interval);
     }, []);
 
+    const totalPlayers = useMemo(() => 
+        servers.reduce((acc, s) => acc + (s.status === ServerStatus.ONLINE ? (s.maxPlayers ? Math.floor(Math.random() * 3) + 1 : 1) : 0), 0)
+    , [servers]);
 
-    const totalOnline = useMemo(() => 
-        servers.reduce((acc, s) => acc + (s.status === ServerStatus.ONLINE ? (s.maxPlayers ? Math.floor(Math.random() * 3) + 1 : 0) : 0), 0)
-    , [servers]); // Dependencies ensure this only recalcs when servers change
-
-    const systemsOperational = servers.length > 0 && servers.every(s => s.status !== ServerStatus.OFFLINE);
+    const systemsAllGreen = servers.length > 0 && servers.every(s => s.status === ServerStatus.ONLINE);
 
     return (
-        <div className="min-h-screen bg-[#09090b] text-foreground font-sans selection:bg-emerald-500/20 relative overflow-hidden">
-            {/* Optimized Background: Hardware Accelerated */}
+        <div className="min-h-screen bg-[#09090b] text-white font-sans selection:bg-emerald-500/30 overflow-x-hidden">
+            
+            {/* Arty Background Layer */}
             <div className="fixed inset-0 z-0 pointer-events-none">
-                <div className="absolute top-[-50%] left-[-50%] w-[200%] h-[200%] bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-emerald-900/10 via-[#09090b] to-[#09090b] opacity-40 animate-[pulse_8s_ease-in-out_infinite]" style={{ willChange: 'opacity' }}></div>
-                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.02)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.02)_1px,transparent_1px)] bg-[size:50px_50px] [mask-image:radial-gradient(ellipse_60%_50%_at_50%_0%,#000_70%,transparent_100%)]"></div>
+                <div className="absolute top-[-10%] left-[-5%] w-1/2 h-1/2 bg-emerald-500/5 blur-[120px] rounded-full" />
+                <div className="absolute bottom-[-10%] right-[-5%] w-1/3 h-1/3 bg-blue-500/5 blur-[100px] rounded-full" />
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_2px_2px,rgba(255,255,255,0.03)_1px,transparent_0)] bg-[size:40px_40px]" />
             </div>
 
-            {/* Top Navigation */}
-            <nav className="border-b border-[rgb(var(--color-border-subtle))] bg-black/40 backdrop-blur-xl sticky top-0 z-50 transition-all duration-300">
-                <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                        <div className="w-8 h-8 rounded-lg bg-emerald-500 flex items-center justify-center font-bold text-black shadow-[0_0_15px_rgba(16,185,129,0.3)]">
-                            <Activity size={18} />
-                        </div>
-                        <span className="font-bold tracking-tight text-lg">CraftCommand <span className="text-emerald-500">Status</span></span>
+            {/* Navigation (Editorial Style) */}
+            <nav className="relative z-50 px-8 py-10 flex justify-between items-center max-w-[1400px] mx-auto">
+                <div className="flex items-center gap-4 group cursor-pointer" onClick={() => window.location.reload()}>
+                    <img src="/website-icon.png" className="w-10 h-10 object-contain transition-all duration-500" alt="CC" />
+                    <div>
+                        <p className="font-black text-xl tracking-tighter uppercase leading-none">CraftCommand</p>
+                        <p className="text-[9px] uppercase tracking-[0.4em] text-white/40 font-bold">Network Architecture</p>
                     </div>
-                    <button 
-                        onClick={onNavigateLogin}
-                        className="group flex items-center gap-2 px-5 py-2 rounded-full bg-white/5 hover:bg-white/10 border border-[rgb(var(--color-border-subtle))] hover:border-[rgb(var(--color-border-strong))] transition-all text-sm font-medium hover:scale-105 active:scale-95"
-                    >
-                        <span>Staff Portal</span>
-                        <ArrowRight size={14} className="group-hover:translate-x-0.5 transition-transform" />
-                    </button>
                 </div>
+
+                <button 
+                    onClick={onNavigateLogin}
+                    className="flex items-center gap-3 px-6 py-3 rounded-full border border-white/5 hover:bg-white/5 hover:border-white/10 transition-all text-[10px] font-black uppercase tracking-[0.2em] group"
+                >
+                    Administrative Portal
+                    <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                </button>
             </nav>
 
-            {/* Content Container */}
-            <div className="relative z-10 pb-20">
-                {/* Hero Header */}
-                <div className="pt-20 pb-16 px-6">
-                    <div className="max-w-6xl mx-auto">
-                        <div className="flex flex-col md:flex-row md:items-end justify-between gap-10">
-                            <div className="animate-slide-up">
-                                <div className="flex items-center gap-2 mb-6">
-                                    <div className={`px-3 py-1 rounded-full text-xs font-bold uppercase tracking-widest border flex items-center gap-2 ${systemsOperational ? 'bg-emerald-500/10 text-emerald-500 border-emerald-500/20' : 'bg-amber-500/10 text-amber-500 border-amber-500/20'}`}>
-                                        <span className={`w-1.5 h-1.5 rounded-full ${systemsOperational ? 'bg-emerald-500 animate-pulse' : 'bg-amber-500'}`}></span>
-                                        {systemsOperational ? 'All Systems Operational' : 'Degraded Performance'}
-                                    </div>
-                                </div>
-                                <h1 className="text-5xl md:text-7xl font-bold tracking-tight text-white mb-6 drop-shadow-2xl">
-                                    Network <span className="text-transparent bg-clip-text bg-gradient-to-r from-emerald-400 to-teal-500">Telemetry</span>
+            <main className="relative z-10 max-w-[1400px] mx-auto px-8 pt-12 pb-32">
+                
+                {/* Asymmetric Hero Section */}
+                <div className="flex flex-col xl:flex-row gap-20 items-start mb-32">
+                    <div className="flex-1 relative">
+                        <motion.div
+                            initial={{ opacity: 0, x: -50 }}
+                            animate={{ opacity: 1, x: 0 }}
+                            transition={{ duration: 0.8, ease: "easeOut" }}
+                            className="select-none cursor-crosshair relative group"
+                            onMouseDown={() => setIsHolding(true)}
+                            onMouseUp={() => setIsHolding(false)}
+                            onMouseLeave={() => setIsHolding(false)}
+                            onTouchStart={() => setIsHolding(true)}
+                            onTouchEnd={() => setIsHolding(false)}
+                        >
+                            <p className="text-[11px] font-black uppercase tracking-[0.6em] text-emerald-500 mb-6 flex items-center gap-3">
+                                <Activity size={12} /> Live Telemetry System_v2
+                            </p>
+                            <div className="relative inline-block">
+                                <h1 className={`text-6xl md:text-8xl font-black tracking-tighter leading-[0.85] mb-8 text-white transition-all duration-300 ${isHolding ? 'scale-[0.99] brightness-125' : ''}`}>
+                                    NETWORK<br />
+                                    <span className="opacity-10">STATUS</span>
                                 </h1>
-                                <p className="text-lg text-muted-foreground max-w-xl leading-relaxed">
-                                    Real-time operational status, player metrics, and connection details for the CraftCommand gaming infrastructure.
-                                </p>
+                                
+                                {isHolding && (
+                                    <>
+                                        <div className="absolute inset-0 text-6xl md:text-8xl font-black tracking-tighter leading-[0.85] text-emerald-500 opacity-70 animate-glitch-1 mix-blend-screen overflow-hidden">
+                                            NETWORK<br />STATUS
+                                        </div>
+                                        <div className="absolute inset-0 text-6xl md:text-8xl font-black tracking-tighter leading-[0.85] text-blue-500 opacity-70 animate-glitch-2 mix-blend-screen overflow-hidden">
+                                            NETWORK<br />STATUS
+                                        </div>
+                                    </>
+                                )}
                             </div>
-                            
-                            {/* Global Stats */}
-                            <div className="flex gap-12 animate-slide-up" style={{ animationDelay: '0.1s' }}>
-                                <div>
-                                    <div className="text-4xl font-mono font-bold text-white mb-1">{servers.length}</div>
-                                    <div className="text-xs text-muted-foreground uppercase tracking-widest font-bold opacity-60">Nodes</div>
-                                </div>
-                                <div>
-                                    <div className="text-4xl font-mono font-bold text-emerald-400 mb-1">{totalOnline}</div>
-                                    <div className="text-xs text-muted-foreground uppercase tracking-widest font-bold opacity-60">Players</div>
-                                </div>
-                                <div>
-                                    <div className="text-4xl font-mono font-bold text-blue-400 mb-1">99.9%</div>
-                                    <div className="text-xs text-muted-foreground uppercase tracking-widest font-bold opacity-60">Uptime</div>
-                                </div>
+                        </motion.div>
+                        
+                        <div className="flex flex-wrap gap-x-12 gap-y-6 mt-8">
+                            <div className="space-y-0.5">
+                                <p className="text-[9px] uppercase tracking-widest font-black text-white/20">Nodes</p>
+                                <p className="text-3xl font-mono font-bold leading-none">{servers.length}</p>
+                            </div>
+                            <div className="space-y-0.5">
+                                <p className="text-[9px] uppercase tracking-widest font-black text-white/30">Uptime</p>
+                                <p className="text-3xl font-mono font-bold leading-none text-emerald-500">99.9%</p>
+                            </div>
+                            <div className="space-y-0.5">
+                                <p className="text-[9px] uppercase tracking-widest font-black text-white/20">Active Load</p>
+                                <p className="text-3xl font-mono font-bold leading-none">{totalPlayers}</p>
                             </div>
                         </div>
                     </div>
+
+                    <div className="w-full xl:w-1/3 xl:pt-24">
+                        <motion.div 
+                            initial={{ opacity: 0, scale: 0.9 }}
+                            animate={{ opacity: 1, scale: 1 }}
+                            className="p-8 rounded-[2.5rem] border border-white/5 bg-white/5 backdrop-blur-3xl relative overflow-hidden"
+                        >
+                            <div className="relative z-10">
+                                <Shield className="text-emerald-500 mb-4" size={32} />
+                                <h2 className="text-xl font-bold mb-3">Enterprise Stability</h2>
+                                <p className="text-sm text-white/40 leading-relaxed font-medium">
+                                    Our distributed infrastructure is monitored 24/7. Core service clusters are currently 
+                                    <span className="text-emerald-500 px-1.5 py-0.5 bg-emerald-500/10 rounded ml-1 uppercase text-[10px] tracking-widest">
+                                        Verified
+                                    </span>
+                                </p>
+                            </div>
+                            <div className="absolute -bottom-10 -right-10 w-40 h-40 bg-emerald-500/10 blur-3xl rounded-full" />
+                        </motion.div>
+                    </div>
                 </div>
 
-                {/* Server Grid */}
-                <div className="max-w-6xl mx-auto px-6 space-y-4">
-                    <AnimatePresence>
-                        {servers.map((server) => (
-                            <ServerCard key={server.id} server={server} />
+                {/* Staggered Grid Content */}
+                <div className="grid grid-cols-1 gap-6">
+                    <AnimatePresence mode="popLayout">
+                        {servers.map((server, idx) => (
+                            <motion.div
+                                key={server.id}
+                                initial={{ opacity: 0, y: 50 }}
+                                animate={{ opacity: 1, y: 0 }}
+                                transition={{ delay: idx * 0.1 }}
+                            >
+                                <StatusCard server={server} />
+                            </motion.div>
                         ))}
                     </AnimatePresence>
 
                     {servers.length === 0 && (
-                        <div className="text-center py-24 bg-[#121214]/50 border border-[rgb(var(--color-border-subtle))] rounded-2xl animate-fade-in">
-                            <Globe size={48} className="mx-auto text-muted-foreground opacity-20 mb-4" />
-                            <p className="text-muted-foreground">No public nodes available at this time.</p>
+                        <div className="py-40 text-center border-2 border-dashed border-white/5 rounded-[3rem]">
+                            <Activity className="mx-auto text-white/10 mb-6" size={64} strokeWidth={1} />
+                            <p className="text-white/20 font-black uppercase tracking-[0.4em] text-xs">Awaiting Connection Packets</p>
                         </div>
                     )}
                 </div>
-            </div>
+            </main>
 
-            {/* Footer */}
-            <footer className="max-w-6xl mx-auto px-6 py-12 text-center relative z-10 border-t border-[rgb(var(--color-border-subtle))]">
-                <div className="flex items-center justify-center gap-2 text-muted-foreground text-sm mb-3">
-                    <ShieldCheck size={16} className="text-emerald-500" />
-                    <span>Secure Infrastructure verified by CraftCommand Shield</span>
+            {/* Arty Footer */}
+            <footer className="max-w-[1400px] mx-auto px-8 py-20 border-t border-white/5 flex flex-col md:flex-row justify-between items-center gap-10">
+                <div className="text-left w-full md:w-auto">
+                    <p className="text-[10px] font-black uppercase tracking-[0.5em] text-white/60 mb-2">Designed for Intelligence</p>
+                    <p className="text-[10px] font-mono opacity-20 max-w-xs">
+                        This interface is a live visualization of the CraftCommand backend cluster. 
+                        Data is streamed via high-frequency polling.
+                    </p>
                 </div>
-                <p className="text-xs text-muted-foreground/40 font-mono mt-2 uppercase tracking-widest">
-                    AGPLv3 License &copy; 2026 Extroos • Auto-refresh active (2s)
-                </p>
+                
+                <div className="flex gap-20">
+                    <div className="text-right">
+                        <p className="text-[9px] uppercase tracking-widest font-black text-white/20 mb-2">Security</p>
+                        <Shield className="ml-auto text-emerald-500/50" size={24} />
+                    </div>
+                    <div className="text-right">
+                        <p className="text-[9px] uppercase tracking-widest font-black text-white/20 mb-2">Compute</p>
+                        <Cpu className="ml-auto text-blue-400/50" size={24} />
+                    </div>
+                </div>
             </footer>
+
+            <style>{`
+                @keyframes glitch-1 {
+                    0% { transform: translate(0); }
+                    20% { transform: translate(-2px, 2px); clip-path: inset(10% 0 30% 0); }
+                    40% { transform: translate(-2px, -2px); clip-path: inset(40% 0 10% 0); }
+                    60% { transform: translate(2px, 2px); clip-path: inset(80% 0 5% 0); }
+                    80% { transform: translate(2px, -2px); clip-path: inset(0% 0 70% 0); }
+                    100% { transform: translate(0); }
+                }
+
+                @keyframes glitch-2 {
+                    0% { transform: translate(0); }
+                    20% { transform: translate(2px, -2px); clip-path: inset(20% 0 40% 0); }
+                    40% { transform: translate(2px, 2px); clip-path: inset(10% 0 60% 0); }
+                    60% { transform: translate(-2px, -2px); clip-path: inset(50% 0 20% 0); }
+                    80% { transform: translate(-2px, 2px); clip-path: inset(30% 0 20% 0); }
+                    100% { transform: translate(0); }
+                }
+
+                .animate-glitch-1 {
+                    animation: glitch-1 0.2s infinite linear alternate-reverse;
+                }
+
+                .animate-glitch-2 {
+                    animation: glitch-2 0.3s infinite linear alternate-reverse;
+                }
+            `}</style>
         </div>
     );
 };

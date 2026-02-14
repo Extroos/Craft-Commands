@@ -1,5 +1,6 @@
 import express from 'express';
 import { pluginService } from '../plugins/PluginService';
+import { pluginConfigService } from '../plugins/PluginConfigService';
 import { verifyToken, requirePermission, requireCapability } from '../../middleware/authMiddleware';
 
 import {  PluginSearchQuery, PluginSource  } from '@shared/types';
@@ -140,6 +141,52 @@ router.get('/servers/:id/updates', requirePermission('server.view'), async (req,
         res.json(updates);
     } catch (err: any) {
         console.error('[PluginRoutes] Update check error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// ===================
+// Plugin Config Editor
+// ===================
+
+// GET /api/plugins/servers/:id/:pluginId/config/files - List config files
+router.get('/servers/:id/:pluginId/config/files', requirePermission('server.files.read'), async (req, res) => {
+    try {
+        const subPath = (req.query.path as string) || '';
+        const files = await pluginConfigService.listFiles(req.params.id, req.params.pluginId, subPath);
+        res.json(files);
+    } catch (err: any) {
+        console.error('[PluginRoutes] Config list error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// GET /api/plugins/servers/:id/:pluginId/config/read - Read a config file
+router.get('/servers/:id/:pluginId/config/read', requirePermission('server.files.read'), async (req, res) => {
+    try {
+        const filePath = req.query.path as string;
+        if (!filePath) return res.status(400).json({ error: 'path query param is required' });
+        
+        const content = await pluginConfigService.readFile(req.params.id, req.params.pluginId, filePath);
+        res.json({ content });
+    } catch (err: any) {
+        console.error('[PluginRoutes] Config read error:', err.message);
+        res.status(500).json({ error: err.message });
+    }
+});
+
+// POST /api/plugins/servers/:id/:pluginId/config/save - Save a config file
+router.post('/servers/:id/:pluginId/config/save', requirePermission('server.files.write'), async (req, res) => {
+    try {
+        const { path: filePath, content } = req.body;
+        if (!filePath || content === undefined) {
+            return res.status(400).json({ error: 'path and content are required' });
+        }
+        
+        await pluginConfigService.saveFile(req.params.id, req.params.pluginId, filePath, content);
+        res.json({ success: true });
+    } catch (err: any) {
+        console.error('[PluginRoutes] Config save error:', err.message);
         res.status(500).json({ error: err.message });
     }
 });

@@ -2,6 +2,38 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.10.1] - 2026-02-14 - Domain & Stability Expansion
+
+### Added
+
+- **Stable Share Wizard**: A new, user-friendly multi-step setup flow for configuring Dynamic DNS (DDNS) with real-time verification and automated propagation checks.
+- **Built-in DuckDNS Support**: Native integration for DuckDNS, enabling direct IP synchronization signals from the panel without requiring an external update client.
+- **System Diagnosis Core (v2)**: Overhauled the diagnostic engine with specialized rules for Java, Bedrock, and Plugins, providing proactive crash analysis and one-click "Auto-Fix" suggestions.
+- **Deep Stability Audit**: Integrated a comprehensive diagnostic suite into `run_locally.bat` that checks system resources, dependency integrity, and backend data health.
+- **Full-Stack Avatar Uploads**: Interactive profile picture configuration with automated backend storage and real-time dashboard sync.
+- **Minecraft Server Icon Restoration**: Integrated a standardized 64x64 PNG branding system with automated deployment across all managed servers.
+
+### Improved
+
+- **Dynamic DNS Persistence**: Implemented backend status caching (`serverDdns`) to preserve networking diagnostics across page navigations and system restarts.
+- **DNS Resolution Resilience**: Added multi-attempt retry logic and fallback to OS-level resolvers to handle transient `EREFUSED` or `ETIMEOUT` lookup failures.
+- **Auto-Healing Manager (v3)**: Stabilized background monitoring with improved "Panic Control" and specialized logic for Bedrock native binary recovery.
+- **API Route Foundation**: Hardened the `ApiService` to consistently handle `/api` prefixing and resolved persistent 404 errors on specific update triggers via a robust GET fallback.
+- **Professional UI Refresh**: Overhauled the Networking and Diagnosis tabs with premium glassmorphism, refined typography, and real-time activity indicators.
+- **Launcher Hardening**: Resolved PowerShell syntax errors in `run_locally.bat` by implementing robust escaped quoting for all interactive prompts.
+- **Maintenance Mode (Fix/Reinstall)**: Hardened dependency cleanup logic with case-insensitive confirmation and real-time installation feedback.
+- **Icon Stabilization Logic**: Implemented high-performance image processing via `sharp` to automatically resize and convert user-uploaded icons to 64x64 PNG for perfect in-game display.
+- **Visual Identity Feedback**: Enhanced `SettingsManager.tsx` to provide real-time "Stabilizing Icon" feedback during the upload and optimization process.
+
+### Fixed & Patched
+
+- **Networking Sync Stability**: Fixed a bug where the Networking tab would reset or "crush" during navigation; implemented silent background polling and instant cache retrieval.
+- **Panic Control Restoration**: Rebuilt the missing emergency isolation infrastructure, ensuring instant decommissioning of network bridges.
+- **ESM/CJS Compatibility**: Resolved `ERR_REQUIRE_ESM` startup failures by isolating script-specific module configurations.
+- **Plugin Marketplace Recovery**: Fixed Spiget 404 handling and improved error display when search providers are temporarily offline.
+- **React Hook Stability**: Resolved a critical "Rules of Hooks" violation in `AppContent` caused by conditional context access.
+- **Environment Stability**: The Stability Audit now automatically identifies and flags missing core storage directories (`minecraft_servers`, `uploads`).
+
 ## [1.10.0] - 2026-02-11 - Distributed Operations & Cluster Resilience
 
 ### Added

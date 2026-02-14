@@ -4,7 +4,7 @@
 
 **The Professional Hybrid Cloud Platform for Java & Bedrock Infrastructure**
 
-![version](https://img.shields.io/badge/version-v1.10.0-emerald)
+![version](https://img.shields.io/badge/version-v1.10.1-emerald)
 ![platform](https://img.shields.io/badge/platform-Windows%20%7C%20Linux%20%7C%20macOS-lightgrey)
 ![license](https://img.shields.io/badge/license-AGPLv3-blue.svg)
 

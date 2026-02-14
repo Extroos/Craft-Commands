@@ -10,8 +10,10 @@ export const AUDIT_FILE = path.join(DATA_DIR, 'audit.json');
 
 export const UPLOADS_ROOT = path.join(process.cwd(), 'uploads');
 export const BACKGROUNDS_UPLOADS_DIR = path.join(UPLOADS_ROOT, 'backgrounds');
+export const AVATARS_UPLOADS_DIR = path.join(UPLOADS_ROOT, 'avatars');
 
-export const WEB_ROOT = path.join(process.cwd(), 'web', 'current');
+export const PROJECT_ROOT = path.resolve(__dirname, '..', '..');
+export const WEB_ROOT = path.join(PROJECT_ROOT, 'web', 'current');
 export const WEB_STAGING = path.join(process.cwd(), 'web', 'staging');
 export const WEB_BACKUPS = path.join(process.cwd(), 'web', 'backups');
 export const WEB_STATE_FILE = path.join(process.cwd(), 'web', 'web_state.json');
@@ -25,6 +27,7 @@ export const DATA_PATHS = {
     TEMP_UPLOADS_DIR,
     UPLOADS_ROOT,
     BACKGROUNDS_UPLOADS_DIR,
+    AVATARS_UPLOADS_DIR,
     WEB_ROOT,
     WEB_STAGING,
     WEB_BACKUPS,

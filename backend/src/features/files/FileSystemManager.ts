@@ -114,4 +114,8 @@ export class FileSystemManager {
     async getStats(relativePath: string): Promise<fs.Stats> {
         return fs.stat(this.resolvePath(relativePath));
     }
+
+    async exists(relativePath: string): Promise<boolean> {
+        return fs.pathExists(this.resolvePath(relativePath));
+    }
 }

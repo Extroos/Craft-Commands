@@ -7,6 +7,7 @@ import { installerService } from '../installer/InstallerService';
 import { serverRepository } from '../../storage/ServerRepository';
 import { pluginRepository } from '../../storage/PluginRepository';
 import { logger } from '../../utils/logger';
+import AdmZip from 'adm-zip';
 
 export class PluginService {
 
@@ -90,17 +91,12 @@ export class PluginService {
             throw new Error(`Failed to download plugin. The marketplace may be temporarily unavailable. (${err.message})`);
         }
 
-        // Validate downloaded file (basic sanity check — must be > 1KB)
+        // Validate downloaded file (integrity check)
         try {
-            const stat = await fs.stat(destPath);
-            if (stat.size < 1024) {
-                await fs.remove(destPath);
-                throw new Error('Downloaded file is suspiciously small (< 1KB). It may be a broken link or HTML error page.');
-            }
+            this.validateJarIntegrity(destPath);
         } catch (err: any) {
-            if (err.message.includes('suspiciously small')) throw err;
-            // stat failed, file doesn't exist
-            throw new Error('Download completed but the file is missing. Please try again.');
+            await fs.remove(destPath);
+            throw new Error(`Downloaded plugin is corrupted or invalid: ${err.message}`);
         }
 
         logger.success(`[PluginService] Downloaded ${downloadInfo.fileName}`);
@@ -116,7 +112,13 @@ export class PluginService {
             version: downloadInfo.version,
             installedAt: Date.now(),
             autoUpdate: false,
-            enabled: true
+            enabled: true,
+            // Capture rich metadata
+            description: (downloadInfo as any).description,
+            author: (downloadInfo as any).author,
+            iconUrl: (downloadInfo as any).iconUrl,
+            category: (downloadInfo as any).category,
+            externalUrl: (downloadInfo as any).externalUrl
         });
 
         // Mark server as needing restart
@@ -211,25 +213,29 @@ export class PluginService {
         const installed = pluginRepository.findByServer(serverId);
         const updates: PluginUpdateInfo[] = [];
 
-        for (const plugin of installed) {
-            if (!plugin.sourceId || plugin.source === 'manual') continue;
-
-            try {
-                const downloadInfo = await marketplaceRegistry.getDownloadUrl(plugin.sourceId, plugin.source);
-                
-                if (downloadInfo.version !== plugin.version) {
-                    updates.push({
-                        pluginId: plugin.id,
-                        name: plugin.name,
-                        currentVersion: plugin.version,
-                        latestVersion: downloadInfo.version,
-                        source: plugin.source,
-                        sourceId: plugin.sourceId,
-                    });
+        const toCheck = installed.filter(p => p.sourceId && p.source !== 'manual');
+        const limit = 5; // Concurrency limit
+        
+        for (let i = 0; i < toCheck.length; i += limit) {
+            const batch = toCheck.slice(i, i + limit);
+            await Promise.all(batch.map(async (plugin) => {
+                try {
+                    const downloadInfo = await marketplaceRegistry.getDownloadUrl(plugin.sourceId!, plugin.source);
+                    
+                    if (downloadInfo.version !== plugin.version) {
+                        updates.push({
+                            pluginId: plugin.id,
+                            name: plugin.name,
+                            currentVersion: plugin.version,
+                            latestVersion: downloadInfo.version,
+                            source: plugin.source,
+                            sourceId: plugin.sourceId,
+                        });
+                    }
+                } catch (err: any) {
+                    logger.warn(`[PluginService] Update check failed for ${plugin.name}: ${err.message}`);
                 }
-            } catch (err: any) {
-                logger.warn(`[PluginService] Update check failed for ${plugin.name}: ${err.message}`);
-            }
+            }));
         }
 
         return updates;
@@ -266,6 +272,14 @@ export class PluginService {
         const destPath = path.join(targetDir, downloadInfo.fileName);
         await installerService.downloadFile(downloadInfo.url, destPath);
 
+        // Validate integrity
+        try {
+            this.validateJarIntegrity(destPath);
+        } catch (err: any) {
+            await fs.remove(destPath);
+            throw new Error(`Update download is corrupted: ${err.message}`);
+        }
+
         // Update record
         const newFileName = plugin.enabled ? downloadInfo.fileName : `${downloadInfo.fileName}.disabled`;
         
@@ -278,6 +292,12 @@ export class PluginService {
             fileName: newFileName,
             version: downloadInfo.version,
             updatedAt: Date.now(),
+            // Refresh metadata
+            description: (downloadInfo as any).description,
+            author: (downloadInfo as any).author,
+            iconUrl: (downloadInfo as any).iconUrl,
+            category: (downloadInfo as any).category,
+            externalUrl: (downloadInfo as any).externalUrl
         });
 
         // Mark server as needing restart
@@ -309,9 +329,13 @@ export class PluginService {
             const existing = pluginRepository.findByFileName(file, serverId);
             if (existing) continue; // Already tracked
 
+            // Try to extract metadata from JAR
+            const jarPath = path.join(targetDir, file);
+            const metadata = await this.extractMetadataFromJar(jarPath);
+
             // Discover this as a manual plugin
             const isDisabled = file.endsWith('.disabled');
-            const cleanName = file
+            const cleanName = metadata.name || file
                 .replace(/\.jar(\.disabled)?$/, '')
                 .replace(/[-_]\d+.*$/, '')
                 .replace(/[._-]/g, ' ')
@@ -323,7 +347,10 @@ export class PluginService {
                 source: 'manual',
                 name: cleanName || file,
                 fileName: file,
-                version: 'Unknown',
+                version: metadata.version || 'Unknown',
+                description: metadata.description,
+                author: metadata.author,
+                dependencies: metadata.dependencies,
                 installedAt: Date.now(),
                 autoUpdate: false,
                 enabled: !isDisabled,
@@ -347,6 +374,83 @@ export class PluginService {
         }
 
         return pluginRepository.findByServer(serverId);
+    }
+
+    async extractMetadataFromJar(jarPath: string): Promise<{ 
+        name?: string, 
+        version?: string, 
+        description?: string, 
+        author?: string,
+        dependencies?: string[]
+    }> {
+        try {
+            const zip = new AdmZip(jarPath);
+            
+            // 1. Check for Bukkit/Spigot (plugin.yml)
+            const pluginYml = zip.getEntry('plugin.yml');
+            if (pluginYml) {
+                const content = pluginYml.getData().toString('utf8').replace(/^\uFEFF/, ''); // Remove BOM
+                const nameMatch = content.match(/^name:\s*(['"]?)(.*?)\1\s*$/m);
+                const versionMatch = content.match(/^version:\s*(['"]?)(.*?)\1\s*$/m);
+                const descMatch = content.match(/^description:\s*(['"]?)(.*?)\1\s*$/m);
+                const authorMatch = content.match(/^author:\s*(['"]?)(.*?)\1\s*$/m);
+                const dependMatch = content.match(/^depend:\s*\[?(.*?)\]?\s*$/m);
+                const softDependMatch = content.match(/^softdepend:\s*\[?(.*?)\]?\s*$/m);
+                
+                const deps: string[] = [];
+                if (dependMatch) deps.push(...dependMatch[1].split(',').map((s: string) => s.trim()).filter(Boolean));
+                if (softDependMatch) deps.push(...softDependMatch[1].split(',').map((s: string) => s.trim()).filter(Boolean));
+
+                return {
+                    name: nameMatch ? nameMatch[2].trim() : undefined,
+                    version: versionMatch ? versionMatch[2].trim() : undefined,
+                    description: descMatch ? descMatch[2].trim() : undefined,
+                    author: authorMatch ? authorMatch[2].trim() : undefined,
+                    dependencies: deps.length > 0 ? deps : undefined
+                };
+            }
+
+            // 2. Check for Fabric (fabric.mod.json)
+            const fabricJson = zip.getEntry('fabric.mod.json');
+            if (fabricJson) {
+                const content = JSON.parse(fabricJson.getData().toString('utf8').replace(/^\uFEFF/, ''));
+                return {
+                    name: content.name || content.id,
+                    version: content.version,
+                    description: content.description,
+                    author: Array.isArray(content.authors) ? content.authors[0] : (content.authors || content.contact?.sources)
+                };
+            }
+
+            // 3. Check for Forge (mods.toml)
+            const modsToml = zip.getEntry('META-INF/mods.toml');
+            if (modsToml) {
+                const content = modsToml.getData().toString('utf8').replace(/^\uFEFF/, '');
+                const nameMatch = content.match(/displayName\s*=\s*(['"])(.*?)\1/);
+                const versionMatch = content.match(/version\s*=\s*(['"])(.*?)\1/);
+                // Better Forge description regex (handles multi-line triple-quotes)
+                const descMatch = content.match(/description\s*=\s*'''([\s\S]*?)'''/) || content.match(/description\s*=\s*"""([\s\S]*?)"""/) || content.match(/description\s*=\s*(['"])(.*?)\1/);
+                
+                return {
+                    name: nameMatch ? nameMatch[2].trim() : undefined,
+                    version: versionMatch ? versionMatch[2].trim() : undefined,
+                    description: descMatch ? descMatch[1].trim() : undefined
+                };
+            }
+        } catch (err: any) {
+            logger.warn(`[PluginService] Failed to extract metadata from ${path.basename(jarPath)}: ${err.message}`);
+        }
+        return {};
+    }
+
+    validateJarIntegrity(jarPath: string): void {
+        try {
+            const zip = new AdmZip(jarPath);
+            // Basic check: must have entries
+            if (zip.getEntries().length === 0) throw new Error('JAR is empty');
+        } catch (err: any) {
+            throw new Error(`ZIP error: ${err.message}`);
+        }
     }
 }
 

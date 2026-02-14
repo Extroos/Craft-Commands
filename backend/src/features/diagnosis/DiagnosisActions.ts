@@ -195,19 +195,17 @@ export const DiagnosisActions = {
     },
 
     /**
-     * Restores a core data file from backup
+     * Restores a core data file from backup (Server Scoped)
      */
-    restoreDataBackup: async (filename: string) => {
-        const { DATA_DIR } = require('../../constants');
-        const filePath = path.join(DATA_DIR, filename);
-        const backupPath = `${filePath}.bak`;
+    restoreDataBackup: async (fs: FileSystemManager, filename: string) => {
+        const backupPath = `${filename}.bak`;
 
-        if (await fs.pathExists(backupPath)) {
+        if (await fs.exists(backupPath)) {
             logger.warn(`[DiagnosisAction] Restoring ${filename} from backup...`);
-            await fs.copy(backupPath, filePath, { overwrite: true });
+            await fs.copy(backupPath, filename);
             logger.success(`[DiagnosisAction] ${filename} restored.`);
         } else {
-            throw new Error(`Backup for ${filename} not found at ${backupPath}`);
+            throw new Error(`Backup for ${filename} not found.`);
         }
     },
 

@@ -198,6 +198,14 @@ class ApiService {
         return res.json();
     }
 
+    async getSystemHealth(): Promise<any> {
+        const res = await fetch(`${API_URL}/system/health`, {
+            headers: this.getAuthHeader()
+        });
+        if (!res.ok) throw new Error('Failed to fetch system health');
+        return res.json();
+    }
+
     async getDockerStatus(): Promise<{ online: boolean, version?: string, error?: string }> {
         const res = await fetch(`${API_URL}/system/docker/status`, {
             headers: this.getAuthHeader()
@@ -874,22 +882,42 @@ class ApiService {
         return res.json();
     }
 
-    // Global Settings
-    async getGlobalSettings(): Promise<GlobalSettings> {
-        const token = localStorage.getItem('cc_token');
-        if (!token) throw new Error('Not authenticated');
-        
-        const response = await fetch('/api/settings/global', {
-            headers: {
-                'Authorization': `Bearer ${token}`
-            }
+    // Generic Request Helpers
+    async get(path: string): Promise<any> {
+        const fullPath = path.startsWith(API_URL) ? path : `${API_URL}${path}`;
+        const res = await fetch(fullPath, {
+            headers: this.getAuthHeader()
         });
-        
-        if (!response.ok) throw new Error('Failed to fetch global settings');
-        return response.json();
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || `GET ${fullPath} failed: ${res.status}`);
+        }
+        return res.json();
     }
 
-    async updateGlobalSettings(settings: GlobalSettings): Promise<void> {
+    async post(path: string, body: any): Promise<any> {
+        const fullPath = path.startsWith(API_URL) ? path : `${API_URL}${path}`;
+        const res = await fetch(fullPath, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...this.getAuthHeader()
+            },
+            body: JSON.stringify(body)
+        });
+        if (!res.ok) {
+            const data = await res.json().catch(() => ({}));
+            throw new Error(data.error || `POST ${fullPath} failed: ${res.status}`);
+        }
+        return res.json();
+    }
+
+    // Global Settings
+    async getGlobalSettings(): Promise<GlobalSettings> {
+        return this.get('/api/settings/global');
+    }
+
+    async updateGlobalSettings(settings: Partial<GlobalSettings>): Promise<void> {
         const token = localStorage.getItem('cc_token');
         if (!token) throw new Error('Not authenticated');
 
@@ -952,6 +980,24 @@ class ApiService {
         if (!res.ok) {
             const data = await res.json();
             throw new Error(data.error || 'Failed to upload background');
+        }
+        
+        return res.json();
+    }
+
+    async uploadAvatar(file: File): Promise<{ url: string }> {
+        const formData = new FormData();
+        formData.append('file', file);
+        
+        const res = await fetch(`${API_URL}/assets/avatar`, {
+            method: 'POST',
+            headers: this.getAuthHeader(),
+            body: formData
+        });
+        
+        if (!res.ok) {
+            const data = await res.json();
+            throw new Error(data.error || 'Failed to upload avatar');
         }
         
         return res.json();

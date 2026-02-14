@@ -200,7 +200,9 @@ const startMain = async () => {
             res.sendFile(path.join(WEB_ROOT, 'index.html'));
         });
     } else {
-        logger.warn('[Server] Web Dashboard index.html not found. Serving Recovery UI.');
+        if (process.env.NODE_ENV !== 'development') {
+            logger.warn('[Server] Web Dashboard index.html not found. Serving Recovery UI.');
+        }
         app.get('*', (req, res) => {
             res.send(`
                 <!DOCTYPE html>

@@ -3,7 +3,8 @@ import { FileSystemManager } from '../files/FileSystemManager';
 import { DiagnosisActions } from './DiagnosisActions';
 import { serverRepository } from '../../storage/ServerRepository';
 import { logger } from '../../utils/logger';
-import {  ServerConfig  } from '@shared/types';
+import { ServerConfig } from '@shared/types';
+import { updateServer } from '../servers/ServerService';
 import { notificationService } from '../system/NotificationService';
 
 export class AutoHealingManager {
@@ -55,10 +56,15 @@ export class AutoHealingManager {
                     await (DiagnosisActions as any).takeHeapSnapshot(payload.reason);
                     break;
                 case 'RESTORE_DATA_BACKUP':
-                    await (DiagnosisActions as any).restoreDataBackup(payload.filename);
+                    await (DiagnosisActions as any).restoreDataBackup(fsManager, payload.filename);
                     break;
                 case 'REINSTALL_BEDROCK':
                     await DiagnosisActions.reinstallBedrock(server);
+                    break;
+                case 'UPDATE_CONFIG':
+                    // Payload contains the config updates (e.g., { ram: 4 } or { port: 25566 })
+                    logger.info(`[AutoHealing] Applying Config Update to ${serverId}: ${JSON.stringify(payload)}`);
+                    await updateServer(serverId, payload);
                     break;
                 default:
                     throw new Error(`Unknown auto-heal action type: ${actionType}`);
@@ -67,17 +73,37 @@ export class AutoHealingManager {
             logger.success(`[AutoHealing] Successfully applied ${actionType} to ${serverId}`);
             
             // Send Notification
+            const cascadingAdvice = this.getCascadingAdvice(actionType);
             await notificationService.create(
                 'ALL', // Notify all admins
                 'INFO',
                 'Auto-Healing Applied',
-                `System applied fix: ${actionType.replace(/_/g, ' ')} to server ${server.name || serverId}.`,
+                `System applied fix: ${actionType.replace(/_/g, ' ')} to server ${server.name || serverId}.${cascadingAdvice ? ' ' + cascadingAdvice : ''}`,
                 { serverId, actionType, timestamp: Date.now() },
                 `/dashboard/${serverId}`
             );
         } catch (error: any) {
             logger.error(`[AutoHealing] Failed to apply ${actionType} to ${serverId}: ${error.message}`);
             throw error;
+        }
+    }
+
+    /**
+     * Provides context-aware advice for further checks after a fix
+     */
+    private getCascadingAdvice(actionType: string): string {
+        switch (actionType) {
+            case 'ADJUST_RAM':
+            case 'SWITCH_JAVA':
+                return 'This core fix might resolve related startup crashes. Please attempt to start the server now.';
+            case 'RESOLVE_PORT_CONFLICT':
+                return 'Port conflict resolved. Other instances using this port might still need attention.';
+            case 'AGREE_EULA':
+                return 'EULA accepted. The server will now be able to initialize its world files.';
+            case 'REINSTALL_BEDROCK':
+                return 'Reinstallation complete. Your world data was preserved, but behavior packs may need re-linking.';
+            default:
+                return '';
         }
     }
 }

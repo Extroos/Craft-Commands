@@ -15,6 +15,7 @@ import { AppError } from '../../utils/AppError';
 import { auditService } from '../system/AuditService';
 import { DATA_PATHS } from '../../constants';
 import { autoHealingManager } from '../diagnosis/AutoHealingManager';
+import sharp from 'sharp';
 
 
 const util = require('minecraft-server-util');
@@ -363,6 +364,26 @@ router.get('/:id/diagnosis', verifyToken, requirePermission('server.view'), asyn
     }
 });
 
+// Apply Automatic Fix (Manual Trigger)
+router.post('/:id/heal', verifyToken, requirePermission('server.settings'), async (req, res) => {
+    const { id } = req.params;
+    const { type, payload } = req.body;
+    
+    if (!type) {
+        return res.status(400).json({ error: 'Fix type is required.' });
+    }
+
+    try {
+        await autoHealingManager.executeFix(id, type, payload || {});
+        res.json({ success: true, message: `Successfully applied fix: ${type}` });
+        
+        auditService.log((req as any).user.id, 'SERVER_HEAL', id, { type, payload });
+    } catch (e: any) {
+        console.error(`[Servers] Manual fix failed for ${id}:`, e);
+        res.status(500).json({ error: e.message || 'Failed to apply automatic fix.' });
+    }
+});
+
 // Create Server
 // Import at top (assumed added in previous step or handled by imports logic, but I'll add the logic inline or rely on auto-import)
 import { validateFolderName } from '../../utils/validation';
@@ -573,15 +594,30 @@ router.post('/:id/icon', requirePermission('server.settings.write'), upload.sing
         const iconName = server.software === 'Bedrock' ? 'world_icon.png' : 'server-icon.png';
         const targetPath = path.join(server.workingDirectory, iconName);
 
-        // Move the file from temp to server folder
-        await fs.move(req.file.path, targetPath, { overwrite: true });
-        
-        console.log(`[IconUpload] Updated icon for ${id} (${server.software}) at ${targetPath}`);
-        res.json({ success: true, iconName });
+        // Stabilize Icon: Resize to 64x64 and convert to PNG
+        try {
+            await sharp(req.file.path)
+                .resize(64, 64, {
+                    fit: 'contain',
+                    background: { r: 0, g: 0, b: 0, alpha: 0 }
+                })
+                .png()
+                .toFile(targetPath);
+            
+            // Clean up the temp file
+            await fs.remove(req.file.path);
+            
+            logger.info(`[IconUpload] Stabilized & Updated icon for ${id} (${server.software}) at ${targetPath}`);
+            res.json({ success: true, iconName });
 
-        auditService.log((req as any).user.id, 'SERVER_ICON_UPDATE', server.id, { iconName });
+            auditService.log((req as any).user.id, 'SERVER_ICON_UPDATE', server.id, { iconName });
+        } catch (sharpError: any) {
+            logger.error(`[IconUpload] Sharp processing failed: ${sharpError.message}`);
+            // Fallback: move the file as-is if possible, or error out
+            throw new Error(`Icon stabilization failed: ${sharpError.message}`);
+        }
     } catch (e: any) {
-        console.error(`[IconUpload] Failed for ${req.params.id}:`, e);
+        logger.error(`[IconUpload] Failed for ${req.params.id}: ${e.message}`);
         res.status(500).json({ error: e.message });
     }
 });

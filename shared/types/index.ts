@@ -1,5 +1,5 @@
-
 // --- Shared / Backend Types ---
+import { NetworkConfig } from './network';
 
 export type UserRole = 'OWNER' | 'ADMIN' | 'MANAGER' | 'VIEWER';
 
@@ -182,6 +182,7 @@ export interface ServerConfig {
     };
     needsRestart?: boolean; // Track if plugin/config changes require a reboot
     collabSettings?: CollabSettings; // Per-server collaboration role gates
+    network?: NetworkConfig;
 }
 
 // --- Frontend Specific Types ---
@@ -232,7 +233,13 @@ export interface GlobalSettings {
             enabled: boolean;
         };
         autoHealing?: boolean;
+        autoHealingV3?: {
+            driftDetectionEnabled: boolean;
+            ioThrottlingThreshold: number;
+            healthSnapshotInterval: number;
+        };
         updateWeb?: boolean;
+        network?: NetworkConfig;
     };
     discordBot?: DiscordBotConfig;
     version?: string; // Programmatic version from version.json
@@ -352,7 +359,7 @@ export type AuditAction =
     | 'TEMPLATE_INSTALL' | 'FILE_EDIT' | 'EULA_ACCEPT' | 'PERMISSION_DENIED'
     | 'SYSTEM_SETTINGS_UPDATE' | 'SYSTEM_CACHE_CLEAR' | 'DISCORD_RECONNECT' | 'DISCORD_SYNC'
     | 'ASSET_UPLOAD' | 'WEB_UPDATE_RUN' | 'WEB_UPDATE_ROLLBACK' | 'WEB_UPDATE_FAIL'
-    | 'SERVER_IMPORT' | 'SERVER_IMPORT_UNDO' | 'AUTO_HEAL'
+    | 'SERVER_IMPORT' | 'SERVER_IMPORT_UNDO' | 'AUTO_HEAL' | 'SERVER_HEAL'
     | 'SERVER_ICON_UPDATE';
 
 export interface AuditLog {
@@ -399,6 +406,12 @@ export interface DiagnosisResult {
         id: string;
         analysis: string;
     };
+    
+    // Intelligence Brain v2 Properties
+    confidence?: number; // 0-100 (Optional: Brain will populate if missing)
+    isRootCause?: boolean; // Primary issue
+    suppressedBy?: string[]; // IDs of deeper issues that suppressed this
+    
     timestamp: number;
 }
 
@@ -464,6 +477,14 @@ export interface InstalledPlugin {
     updatedAt?: number;
     autoUpdate: boolean;    // Opt-in only, never forced
     enabled: boolean;       // false = renamed to .jar.disabled
+    
+    // Rich Metadata (Synced from Marketplace)
+    description?: string;
+    author?: string;
+    iconUrl?: string;
+    category?: string;
+    externalUrl?: string;
+    dependencies?: string[];
 }
 
 export interface PluginSearchQuery {

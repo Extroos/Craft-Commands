@@ -13,6 +13,7 @@ import templateRoutes from '../features/installer/templates.routes';
 import importRoutes from '../features/installer/import.routes';
 import installRoutes from '../features/installer/install.routes';
 import nodesRoutes from '../features/nodes/nodes.routes';
+import networkRoutes from '../features/network/network.routes';
 
 
 
@@ -39,6 +40,7 @@ export const setupRoutes = (app: Express) => {
 
     console.log('[Routes] Registering /api/nodes');
     app.use('/api/nodes', nodesRoutes);
+    app.use('/api/network', networkRoutes);
     
     // Status Route
     app.get('/api/status', (req, res) => {

@@ -37,7 +37,7 @@ import { SystemProvider, useSystem } from './features/system/context/SystemConte
 import OperatorChat from './features/collaboration/OperatorChat';
 
 const AppContent: React.FC = () => {
-    const { user, isAuthenticated, logout: authLogout, isLoading: authLoading } = useUser();
+    const { user, isAuthenticated, logout: authLogout, isLoading: authLoading, guestPrefs } = useUser();
     const { servers, currentServer, setCurrentServerById, isLoading: serversLoading } = useServers();
     const { version, settings } = useSystem();
     
@@ -125,17 +125,14 @@ const AppContent: React.FC = () => {
         const cachedStr = localStorage.getItem('cc_backgrounds');
         const cached = cachedStr ? JSON.parse(cachedStr) : null;
         
-        // Quality Mode Check: Backgrounds require High Quality mode
-        const qualityEnabled = user ? user.preferences.visualQuality : true; // Default to allow on login if we don't know yet? 
-        // Actually, let's check cached preferences for quality mode too if we want to be perfect
-        if (user && !user.preferences.visualQuality) return undefined;
+        // Quality Mode Check
+        const qualityEnabled = user ? user.preferences.visualQuality : guestPrefs.visualQuality;
+        if (!qualityEnabled) return undefined;
 
         if (!user || !user.preferences.backgrounds) {
             // Pre-auth fallback for personal branding
-            if (appState === 'LOGIN' && cached) return cached.login;
-            
-            // DEFAULT FALLBACK: If Quality Mode is on but no backgrounds set, show the default
-            return '/backgrounds/default.png';
+            if (appState === 'LOGIN' && cached?.login) return cached.login;
+            return undefined; // No default image anymore as per previous fix
         }
         
         const b = user.preferences.backgrounds;
@@ -395,9 +392,9 @@ const AppContent: React.FC = () => {
 
     return (
         /* MotionConfig globally controls all framer-motion components */
-        <MotionConfig transition={user?.preferences.reducedMotion ? { duration: 0 } : undefined}>
+        <MotionConfig transition={(user ? user.preferences.reducedMotion : guestPrefs.reducedMotion) ? { duration: 0 } : undefined}>
             <div className="relative min-h-screen">
-                <PageBackground settings={getActiveBackground()} />
+                <PageBackground settings={getActiveBackground() as any} />
                 <div className="relative z-10 min-h-screen">
                     {renderContent()}
                 </div>

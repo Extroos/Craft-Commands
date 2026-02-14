@@ -9,6 +9,8 @@ export const PluginFolderMissingRule: DiagnosisRule = {
     id: 'plugin_folder_missing',
     name: 'Missing Plugins Directory',
     description: 'Server software supports plugins but the plugins folder is missing.',
+    tier: 2,
+    defaultConfidence: 100,
     triggers: [], 
     analyze: async (server: ServerConfig): Promise<DiagnosisResult | null> => {
         const supports = ['Paper', 'Spigot', 'Purpur', 'BungeeCord', 'Velocity'].includes(server.software);
@@ -43,6 +45,8 @@ export const DuplicatePluginJarRule: DiagnosisRule = {
     name: 'Duplicate Plugin JARs',
     description: 'Multiple JAR files found for the same plugin, which can cause load conflicts.',
     triggers: [/Ambiguous plugin name/i, /Duplicate plugin/i],
+    tier: 2,
+    defaultConfidence: 100,
     analyze: async (server: ServerConfig, logs: string[]): Promise<DiagnosisResult | null> => {
         if (!server.workingDirectory) return null;
         const pluginsDir = path.join(server.workingDirectory, 'plugins');
@@ -89,6 +93,8 @@ export const PluginIncompatibleRule: DiagnosisRule = {
     name: 'Incompatible Plugin',
     description: 'A plugin is incompatible with the current server version or Java version.',
     triggers: [/UnsupportedClassVersionError/i, /Incompatible server version/i, /Could not load.*plugin.yml/i],
+    tier: 3,
+    defaultConfidence: 90,
     analyze: async (server: ServerConfig, logs: string[]): Promise<DiagnosisResult | null> => {
         const errorLine = logs.find(l => l.includes('UnsupportedClassVersionError') || l.includes('Incompatible server version'));
         if (errorLine) {
@@ -114,7 +120,29 @@ export const PluginAccessRule: DiagnosisRule = {
     name: 'Plugin Access Denied',
     description: 'The server cannot access or read its plugins due to permission issues.',
     triggers: [/Permission denied.*plugins/i, /java.nio.file.AccessDeniedException.*plugins/i],
-    analyze: async (server: ServerConfig): Promise<DiagnosisResult | null> => {
+    tier: 1,
+    defaultConfidence: 100,
+    analyze: async (server: ServerConfig, logs: string[]): Promise<DiagnosisResult | null> => {
+        if (!server.workingDirectory) return null;
+        const pluginsDir = path.join(server.workingDirectory, 'plugins');
+
+        // Check logs first (Reactive)
+        const hasLogMatch = logs.some(l => /Permission denied.*plugins/i.test(l) || /java.nio.file.AccessDeniedException.*plugins/i.test(l));
+        
+        // If no log match, perform real validation (Proactive)
+        if (!hasLogMatch) {
+            if (!(await fs.pathExists(pluginsDir))) return null; // Handled by PluginFolderMissingRule
+            
+            try {
+                // Try to list the directory to confirm access
+                await fs.readdir(pluginsDir);
+                return null; // Access is OK
+            } catch (e: any) {
+                // Only report if it's a permission error
+                if (e.code !== 'EACCES' && e.code !== 'EPERM') return null;
+            }
+        }
+
         return {
             id: `plugin-perm-${server.id}-${Date.now()}`,
             ruleId: 'plugin_access_denied',
@@ -123,10 +151,11 @@ export const PluginAccessRule: DiagnosisRule = {
             explanation: 'The server process does not have sufficient permissions to read or write to the "plugins" directory.',
             recommendation: 'Repair the folder permissions to ensure the server can load plugins.',
             action: {
-                type: 'UPDATE_CONFIG', // Placeholder for permission fix if not directly available
+                type: 'UPDATE_CONFIG',
                 payload: { repairPermissions: true },
                 autoHeal: true
             },
+            confidence: hasLogMatch ? 100 : 90,
             timestamp: Date.now()
         };
     }
@@ -139,6 +168,8 @@ export const PluginPendingRestartRule: DiagnosisRule = {
     id: 'plugin_pending_restart',
     name: 'Plugin Changes Pending Restart',
     description: 'A restart is required to apply recent plugin installations or changes.',
+    tier: 3,
+    defaultConfidence: 100,
     triggers: [], 
     analyze: async (server: ServerConfig): Promise<DiagnosisResult | null> => {
         if (server.needsRestart && (server.status === 'ONLINE' || server.status === 'STARTING')) {

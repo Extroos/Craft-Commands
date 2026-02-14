@@ -7,6 +7,8 @@ export const BedrockExecutableRule: DiagnosisRule = {
     name: 'Missing Bedrock Executable',
     description: 'Checks if bedrock_server.exe (Win) or bedrock_server (Linux) exists',
     triggers: [], // Proactive check
+    tier: 1,
+    defaultConfidence: 100,
     analyze: async (server: ServerConfig): Promise<DiagnosisResult | null> => {
         if (server.software !== 'Bedrock') return null;
 
@@ -39,6 +41,8 @@ export const BedrockPortRule: DiagnosisRule = {
     name: 'Bedrock Port Binding Check',
     description: 'Checks for UDP port binding failures specific to Bedrock',
     triggers: [],
+    tier: 1,
+    defaultConfidence: 95,
     analyze: async (server: ServerConfig, logs: string[]): Promise<DiagnosisResult | null> => {
         if (server.software !== 'Bedrock') return null;
 
@@ -80,6 +84,8 @@ export const BedrockJSONCorruptionRule: DiagnosisRule = {
     name: 'Bedrock JSON Config Check',
     description: 'Detects malformed permissions.json or whitelist.json files',
     triggers: [], // Proactive
+    tier: 2,
+    defaultConfidence: 100,
     analyze: async (server: ServerConfig): Promise<DiagnosisResult | null> => {
         if (server.software !== 'Bedrock') return null;
 
@@ -119,6 +125,8 @@ export const BedrockDependencyRule: DiagnosisRule = {
         /libssl\.so/i,
         /libcrypto\.so/i
     ],
+    tier: 1,
+    defaultConfidence: 100,
     analyze: async (server: ServerConfig, logs: string[]): Promise<DiagnosisResult | null> => {
         if (server.software !== 'Bedrock' || process.platform === 'win32') return null;
 
@@ -150,6 +158,8 @@ export const BedrockVCRedistRule: DiagnosisRule = {
         /MSVCP140\.dll/i,
         /The code execution cannot proceed/i
     ],
+    tier: 1,
+    defaultConfidence: 100,
     analyze: async (server: ServerConfig, logs: string[]): Promise<DiagnosisResult | null> => {
         if (server.software !== 'Bedrock' || process.platform !== 'win32') return null;
 
@@ -174,13 +184,82 @@ export const BedrockVersionMismatchRule: DiagnosisRule = {
     name: 'Bedrock Version Check',
     description: 'Checks if the executable version matches the expected server version',
     triggers: [], // Pre-flight check
+    tier: 2,
+    defaultConfidence: 90,
     analyze: async (server: ServerConfig): Promise<DiagnosisResult | null> => {
         if (server.software !== 'Bedrock') return null;
+        return null;
+    }
+};
 
-        // Note: For now, this is a placeholder check for deep validation. 
-        // In a real scenario, we would parse `bedrock_server --version` if possible, 
-        // though BDS is notorious for not having a clean CLI version flag.
-        // We'll use existence of specific files or offsets if needed later.
+/**
+ * Detects level.dat corruption which is common in Bedrock
+ */
+export const BedrockLevelDatRule: DiagnosisRule = {
+    id: 'bedrock_level_dat_corrupt',
+    name: 'Bedrock level.dat Corruption',
+    description: 'Detects if the level.dat file is missing or corrupted',
+    triggers: [
+        /Failed to open level.dat/i,
+        /Level format not recognized/i,
+        /level.dat is not a valid NBT file/i
+    ],
+    tier: 3,
+    defaultConfidence: 95,
+    analyze: async (server: ServerConfig, logs: string[]): Promise<DiagnosisResult | null> => {
+        if (server.software !== 'Bedrock') return null;
+
+        const worldName = 'Bedrock Level'; // Default
+        const levelDatPath = path.join(server.workingDirectory, 'worlds', worldName, 'level.dat');
+        
+        const hasLogMatch = logs.some(l => /Failed to open level.dat|Level format not recognized/i.test(l));
+        
+        if (hasLogMatch) {
+            return {
+                id: `br-level-${server.id}-${Date.now()}`,
+                ruleId: 'bedrock_level_dat_corrupt',
+                severity: 'CRITICAL',
+                title: 'World Data Corruption',
+                explanation: 'The server failed to load the world because the level.dat file is corrupted or unreadable.',
+                recommendation: 'Restore the level.dat from a backup or use a world repair tool.',
+                timestamp: Date.now()
+            };
+        }
+        return null;
+    }
+};
+
+/**
+ * Detects common WSL/Path issues when running on Windows but accessing Linux-style paths
+ */
+export const BedrockWSLPathRule: DiagnosisRule = {
+    id: 'bedrock_wsl_path_issue',
+    name: 'Bedrock WSL/Path Conflict',
+    description: 'Detects if the server is trying to access paths in a way that conflicts with WSL or PowerShell permissions',
+    triggers: [
+        /Access is denied/i,
+        /Operation not permitted/i,
+        /\\\\wsl\$/i
+    ],
+    tier: 1,
+    defaultConfidence: 80,
+    analyze: async (server: ServerConfig, logs: string[]): Promise<DiagnosisResult | null> => {
+        if (server.software !== 'Bedrock' || process.platform !== 'win32') return null;
+
+        const hasWSLPrefix = server.workingDirectory.toLowerCase().includes('wsl$');
+        const hasAccessDenied = logs.some(l => /Access is denied/i.test(l));
+
+        if (hasWSLPrefix && hasAccessDenied) {
+            return {
+                id: `br-wsl-${server.id}-${Date.now()}`,
+                ruleId: 'bedrock_wsl_path_issue',
+                severity: 'WARNING',
+                title: 'WSL Path Permission Issue',
+                explanation: 'The server is located on a WSL network share. Bedrock Server often has issues with block-level locking over WSL shares.',
+                recommendation: 'Move the server folder to a local drive (e.g., C:\\Servers) for better compatibility.',
+                timestamp: Date.now()
+            };
+        }
         return null;
     }
 };
@@ -191,5 +270,7 @@ export const BedrockRules: DiagnosisRule[] = [
     BedrockDependencyRule,
     BedrockVCRedistRule,
     BedrockVersionMismatchRule,
-    BedrockJSONCorruptionRule
+    BedrockJSONCorruptionRule,
+    BedrockLevelDatRule,
+    BedrockWSLPathRule
 ];

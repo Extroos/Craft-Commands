@@ -16,6 +16,8 @@ export const EulaRule: DiagnosisRule = {
         /You need to agree to the EULA/i,
         /eula.txt/i
     ],
+    tier: 1,
+    defaultConfidence: 100,
     isHealable: true,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats, crashReport?: CrashReport): Promise<DiagnosisResult | null> => {
         const hasLog = logs.some(l => l.includes('agree to the EULA'));
@@ -54,6 +56,8 @@ export const MissingDirectoryRule: DiagnosisRule = {
     id: 'missing_directory',
     name: 'Missing Server Directory',
     description: 'Checks if the server working directory exists',
+    tier: 1,
+    defaultConfidence: 100,
     triggers: [], // Run periodically/pre-flight
     analyze: async (server: ServerConfig): Promise<DiagnosisResult | null> => {
         if (!await fs.pathExists(server.workingDirectory)) {
@@ -75,6 +79,8 @@ export const InsufficientRamRule: DiagnosisRule = {
     id: 'insufficient_ram',
     name: 'System RAM Check',
     description: 'Checks if the system has enough RAM to allocate to the server',
+    tier: 1,
+    defaultConfidence: 100,
     triggers: [], // Run periodically/pre-flight
     analyze: async (server: ServerConfig): Promise<DiagnosisResult | null> => {
         const si = require('systeminformation');
@@ -89,8 +95,8 @@ export const InsufficientRamRule: DiagnosisRule = {
                     ruleId: 'insufficient_ram',
                     severity: 'CRITICAL',
                     title: 'Insufficient System RAM',
-                    explanation: `Allocating ${allocatedGb}GB RAM but the system only has ${totalGb.toFixed(1)}GB total.`,
-                    recommendation: 'Lower the RAM allocation in Server Settings or upgrade the system memory.',
+                    explanation: `This server is configured to use ${allocatedGb}GB RAM, but the host system only has ${totalGb.toFixed(1)}GB total memory. Running it will likely cause a system crash.`,
+                    recommendation: `Lower the RAM allocation in Server Settings (e.g., to ${Math.floor(totalGb * 0.8)}GB) or upgrade the host's physical memory.`,
                     timestamp: Date.now()
                 };
             }
@@ -110,6 +116,8 @@ export const PortConflictRule: DiagnosisRule = {
         /Address already in use/i,
         /BindException/i
     ],
+    tier: 1,
+    defaultConfidence: 95,
     isHealable: true,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats, crashReport?: CrashReport): Promise<DiagnosisResult | null> => {
         // Universal Check: Logs OR Direct Network check
@@ -139,21 +147,37 @@ export const PortConflictRule: DiagnosisRule = {
             const isExternalApp = !isManagedConflict && !isKillableGhost;
 
             if (isExternalApp) {
+                 let nextPort = server.port + 1;
+                 try {
+                     const { NetUtils } = require('../../utils/NetUtils');
+                     while (await NetUtils.checkPort(nextPort) && nextPort < server.port + 10) {
+                         nextPort++;
+                     }
+                 } catch (e) {}
+
                  return {
                     id: `port-ext-${server.id}-${Date.now()}`,
                     ruleId: 'port_binding',
                     severity: 'CRITICAL',
                     title: 'Port Conflict (External App)',
                     explanation: `Port ${server.port} is blocked by an external application (${blockingProcessName || 'Unknown'}). We will not kill it to avoid data loss.`,
-                    recommendation: 'Change the server port in Settings to an available port.',
+                    recommendation: `Change the server port in Settings to an available port (e.g., ${nextPort}).`,
                     action: {
                         type: 'UPDATE_CONFIG',
-                        payload: { serverId: server.id, action: 'RESOLVE_PORT_CONFLICT' },
+                        payload: { port: nextPort },
                         autoHeal: true
                     },
                     timestamp: Date.now()
                 };
             }
+
+            let nextPort = server.port + 1;
+            try {
+                const { NetUtils } = require('../../utils/NetUtils');
+                while (await NetUtils.checkPort(nextPort) && nextPort < server.port + 10) {
+                    nextPort++;
+                }
+            } catch (e) {}
 
             return {
                 id: `port-${server.id}-${Date.now()}`,
@@ -164,11 +188,11 @@ export const PortConflictRule: DiagnosisRule = {
                     ? `Port ${server.port} is already being used by ${otherOnline?.name || 'another process'}.`
                     : `Port ${server.port} is blocked by a stray background Java process.`,
                 recommendation: isManagedConflict
-                    ? 'Change the server port in Settings to resolve the conflict.'
+                    ? `Change the server port in Settings to resolve the conflict (we recommend port ${nextPort}).`
                     : 'We can safely purge this ghost process to start your server.',
                 action: isManagedConflict ? {
                     type: 'UPDATE_CONFIG',
-                    payload: { serverId: server.id, action: 'RESOLVE_PORT_CONFLICT' },
+                    payload: { port: nextPort },
                     autoHeal: true
                 } : {
                     type: 'PURGE_GHOST', // Only offer purge if it's safe!
@@ -191,18 +215,47 @@ export const JavaVersionRule: DiagnosisRule = {
         /version/i,
         /unsupported/i
     ],
+    tier: 1,
+    defaultConfidence: 95,
     isHealable: true,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats, crashReport?: CrashReport): Promise<DiagnosisResult | null> => {
         const logContent = logs.join('\n').toLowerCase();
         const hasError = /unsupportedclassversionerror|compiled by a more recent version|unsupported java version|java \d+ is required/i.test(logContent);
-        if (!hasError) return null;
+        
+        const currentJavaNum = parseInt(server.javaVersion?.match(/\d+/)?.[0] || '8');
+        let requiredJava = 'Java 17'; 
+        let minVersion = 17;
 
-        const currentJava = server.javaVersion;
-        let requiredJava = 'Java 17'; // Guess default
+        // Proactive Intelligence: Determine requirements based on software version
+        if (server.software?.toLowerCase() === 'paper' || server.software?.toLowerCase() === 'purpur' || server.software?.toLowerCase() === 'spigot') {
+            const versionMatch = server.version?.match(/1\.(\d+)/);
+            if (versionMatch) {
+                const minor = parseInt(versionMatch[1]);
+                if (minor >= 20.5) {
+                    requiredJava = 'Java 21';
+                    minVersion = 21;
+                } else if (minor >= 18) {
+                    requiredJava = 'Java 17';
+                    minVersion = 17;
+                } else if (minor >= 17) {
+                    requiredJava = 'Java 16';
+                    minVersion = 16;
+                } else {
+                    requiredJava = 'Java 8';
+                    minVersion = 8;
+                }
+            }
+        }
 
+        const isProactiveMatch = currentJavaNum < minVersion;
+
+        if (!hasError && !isProactiveMatch) return null;
+
+        // Reactive: Refine requirements from logs if present
         const javaLogContent = logs.join('\n').toLowerCase();
         if (javaLogContent.includes('class file version 61.0')) requiredJava = 'Java 17';
         if (javaLogContent.includes('class file version 65.0')) requiredJava = 'Java 21';
+        if (javaLogContent.includes('class file version 66.0')) requiredJava = 'Java 22';
         if (javaLogContent.includes('class file version 60.0')) requiredJava = 'Java 16';
         
         const isWarningOnly = javaLogContent.includes('unsupported java version') && !javaLogContent.includes('unsupportedclassversionerror');
@@ -212,15 +265,16 @@ export const JavaVersionRule: DiagnosisRule = {
             ruleId: 'java_version',
             severity: isWarningOnly ? 'WARNING' : 'CRITICAL',
             title: isWarningOnly ? 'Unsupported Java Version' : 'Incompatible Java Version',
-            explanation: isWarningOnly 
-                ? `The server software warns that '${currentJava}' is not officially supported and may cause issues.`
-                : `Your server requires ${requiredJava} or newer, but it tried to start with ${currentJava} (or an older system default).`,
-            recommendation: `Switch the server's Java Version in the settings tab.`,
+            explanation: hasError 
+                ? `Your server requires ${requiredJava} or newer, but it tried to start with ${server.javaVersion}. Error Log: "${javaLogContent.split('\n')[0].trim()}"`
+                : `Your server (${server.software} ${server.version}) requires at least ${requiredJava}, but is currently configured with ${server.javaVersion}. This will prevent the server from starting.`,
+            recommendation: `Switch the server's Java Version in the settings tab to ${requiredJava}.`,
             action: {
                 type: 'SWITCH_JAVA',
                 payload: { serverId: server.id, version: requiredJava },
-                autoHeal: !isWarningOnly // Only auto-heal if it's a fatal error
+                autoHeal: !isWarningOnly 
             },
+            confidence: hasError ? 100 : 90,
             timestamp: Date.now()
         };
     }
@@ -236,6 +290,8 @@ export const MemoryRule: DiagnosisRule = {
         /heap/i,
         /oom/i
     ],
+    tier: 1,
+    defaultConfidence: 95,
     isHealable: true,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats, crashReport?: CrashReport): Promise<DiagnosisResult | null> => {
          const memoryLogContent = logs.join('\n').toLowerCase();
@@ -287,6 +343,8 @@ export const MissingJarRule: DiagnosisRule = {
     triggers: [
         /Error: Unable to access jarfile/i
     ],
+    tier: 1,
+    defaultConfidence: 100,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats, crashReport?: CrashReport): Promise<DiagnosisResult | null> => {
         // Universal Check: Logs OR Direct Filesystem check
         const logMatch = logs.some(l => /Unable to access jarfile/i.test(l));
@@ -301,8 +359,8 @@ export const MissingJarRule: DiagnosisRule = {
                 ruleId: 'missing_jar',
                 severity: 'CRITICAL',
                 title: 'Server Executable Missing',
-                explanation: `The server file '${execFile}' could not be found or accessed.`,
-                recommendation: 'Ensure the server JAR file exists in the server directory or update your settings to point to the correct file.',
+                explanation: `The server file '${execFile}' could not be found. Expected path: "${jarPath}"`,
+                recommendation: `Ensure the file "${execFile}" exists in your server folder, or update the "Executable" setting in the dashboard to match your actual filename.`,
                 action: {
                     type: 'UPDATE_CONFIG',
                     payload: { serverId: server.id } 
@@ -322,16 +380,19 @@ export const BadConfigRule: DiagnosisRule = {
         /Failed to load properties/i,
         /Exception handling console input/i // Sometimes happens when properties fail
     ],
+    tier: 2,
+    defaultConfidence: 90,
     isHealable: true,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats, crashReport?: CrashReport): Promise<DiagnosisResult | null> => {
+        const configPath = path.join(server.workingDirectory, 'server.properties');
         if (logs.some(l => /Failed to load properties/i.test(l))) {
              return {
                 id: `bad-config-${server.id}-${Date.now()}`,
                 ruleId: 'bad_config',
                 severity: 'CRITICAL',
-                title: 'Corrupted Configuration',
-                explanation: 'The server.properties file is malformed or corrupted.',
-                recommendation: 'Delete server.properties to let the server regenerate it, or fix the syntax errors.',
+                title: 'Corrupted Server Properties',
+                explanation: `The configuration file at "${configPath}" is malformed or corrupted and cannot be loaded by the server.`,
+                recommendation: 'Delete server.properties to let the server regenerate it with default values, or fix the syntax errors manually.',
                 action: {
                     type: 'REPAIR_PROPERTIES',
                     payload: { serverId: server.id },
@@ -352,6 +413,8 @@ export const PermissionRule: DiagnosisRule = {
         /Permission denied/i,
         /Access is denied/i
     ],
+    tier: 1,
+    defaultConfidence: 100,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats, crashReport?: CrashReport): Promise<DiagnosisResult | null> => {
         const match = logs.find(l => /Permission denied|Access is denied/i.test(l));
         if (match) {
@@ -377,6 +440,8 @@ export const InvalidIpRule: DiagnosisRule = {
         /Cannot assign requested address/i,
         /start on .* failed/i
     ],
+    tier: 1,
+    defaultConfidence: 100,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats, crashReport?: CrashReport): Promise<DiagnosisResult | null> => {
         if (logs.some(l => /Cannot assign requested address/i.test(l))) {
              return {
@@ -404,40 +469,214 @@ export const DependencyMissingRule: DiagnosisRule = {
         /Caused by: .*ClassNotFoundException/i, // Crash report pattern
         /Caused by: .*NoClassDefFoundError/i
     ],
+    tier: 3,
+    defaultConfidence: 85,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats, crashReport?: CrashReport): Promise<DiagnosisResult | null> => {
         // 1. Crash Report Analysis (High Precision)
+        const commonMappings: Record<string, string> = {
+            'net.fabricmc.api': 'Fabric API',
+            'net.fabricmc.loader': 'Fabric Loader',
+            'dev.architectury': 'Architectury API',
+            'me.shedaniel': 'Cloth Config',
+            'com.electronwill.nightconfig': 'NightConfig',
+            'org.spongepowered.asm': 'Mixin bootstrap',
+            'com.github.steveice10': 'MCProtocolLib',
+            'org.quiltmc': 'Quilt Standard Libraries',
+            'com.mojang.brigadier': 'Brigadier (Mojang Library)',
+            'com.pixelmonmod': 'Pixelmon',
+            'me.lucko.luckperms': 'LuckPerms',
+            'com.sk89q.worldedit': 'WorldEdit',
+            'com.sk89q.worldguard': 'WorldGuard',
+            'org.dynmap': 'Dynmap',
+            'com.zaxxer.hikari': 'HikariCP (Database Connection Pool)',
+            'org.sqlite': 'SQLite JDBC',
+            'com.mysql.cj': 'MySQL Connector',
+            'com.comphenix.protocol': 'ProtocolLib',
+            'de.tr7zw.nbtapi': 'NBTAPI',
+            'co.aikar.commands': 'ACF (Aikar Command Framework)',
+            'org.bstats': 'bStats (Metrics Library)',
+            'it.unimi.dsi.fastutil': 'FastUtil (standard Minecraft library)',
+            'io.netty': 'Netty (networking library)',
+            'org.apache.logging.log4j': 'Log4J (logging library)',
+            'fr.minuskube.inv': 'SmartInvs',
+            'com.github.cryptomorin.xseries': 'XSeries',
+            'net.citizensnpcs': 'Citizens',
+            'com.viaversion': 'ViaVersion',
+            'org.antlr': 'ANTLR (parsing library)',
+            'kotlin': 'Kotlin Standard Library (Mod is likely missing Kotlin loader)',
+            'scala': 'Scala Standard Library',
+            'com.google.gson': 'GSON',
+            // --- NEW INJECTION (100+ Common Mods/Libs) ---
+            'software.bernie.geckolib': 'Geckolib',
+            'vazkii.patchouli': 'Patchouli',
+            'vazkii.mortal': 'Mortal',
+            'vazkii.psi': 'Psi',
+            'vazkii.quark': 'Quark',
+            'vazkii.botania': 'Botania',
+            'com.github.almasb': 'FXGL',
+            'com.github.benmanes.caffeine': 'Caffeine (core library)',
+            'com.github.terminatortm': 'Lazurite',
+            'info.journeymap': 'JourneyMap',
+            'xaero.common': 'Xaero WorldMap/MiniMap',
+            'com.feed_the_beast.ftblib': 'FTB Library',
+            'com.feed_the_beast.ftbquests': 'FTB Quests',
+            'com.feed_the_beast.ftbteams': 'FTB Teams',
+            'com.feed_the_beast.ftbchunks': 'FTB Chunks',
+            'com.blamejared.crafttweaker': 'CraftTweaker',
+            'com.github.glitchfiend.biomesoplenty': 'Biomes O Plenty',
+            'com.github.glitchfiend.terraforged': 'TerraForged',
+            'com.github.shiruka': 'Shiruka',
+            'net.minecraftforge.fml': 'Forge Mod Loader (Core)',
+            'net.minecraftforge.common': 'Forge Common Library',
+            'com.terraformersmc.modmenu': 'Mod Menu',
+            'com.terraformersmc.canvas': 'Canvas Renderer',
+            'com.terraformersmc.sodium': 'Sodium',
+            'me.jellysquid.mods.lithium': 'Lithium',
+            'me.jellysquid.mods.phosphor': 'Phosphor',
+            'me.jellysquid.mods.starlight': 'Starlight',
+            'com.github.mcjty.rftools': 'RFTools',
+            'com.github.mcjty.mcjtylib': 'McJtyLib',
+            'com.github.mcjty.xnet': 'XNet',
+            'com.github.mcjty.lostcities': 'Lost Cities',
+            'org.anti_ad.mc.common': 'Malilib',
+            'org.anti_ad.mc.litematica': 'Litematica',
+            'net.p3pp3rf1sh.slab_machines': 'Slab Machines',
+            'com.github.paulevsGitch.betternether': 'BetterNether',
+            'com.github.paulevsGitch.betterend': 'BetterEnd',
+            'mod.azure.azurelib': 'AzureLib',
+            'com.github.Crimson_Shadow': 'Create (Core)',
+            'com.simibubi.create': 'Create',
+            'com.jozufozu.flywheel': 'Flywheel',
+            'com.tterrag.registrate': 'Registrate',
+            'net.darkhax.bookshelf': 'Bookshelf',
+            'net.darkhax.gamestages': 'Game Stages',
+            'net.darkhax.runelic': 'Runelic',
+            'com.github.klikli_dev.occultism': 'Occultism',
+            'com.github.klikli_dev.modonomicon': 'Modonomicon',
+            'com.github.klikli_dev.theurgy': 'Theurgy'
+        };
+
         if (crashReport) {
              const missingClassMatch = crashReport.content.match(/Caused by: .*NoClassDefFoundError: ([\w\/\.]+)/);
              if (missingClassMatch) {
                  const missingClass = missingClassMatch[1].replace(/\//g, '.');
+                 let specificLib = '';
+                 for (const [pkg, name] of Object.entries(commonMappings)) {
+                     if (missingClass.startsWith(pkg)) {
+                         specificLib = name;
+                         break;
+                     }
+                 }
+
                  return {
                     id: `dep-crash-${server.id}-${Date.now()}`,
                     ruleId: 'mod_dependency',
                     severity: 'CRITICAL',
-                    title: 'Missing Library or Dependency',
-                    explanation: `The server crashed because a required class was not found: '${missingClass}'. This usually means a library mod (like Fabric API, Mantle, or Citadel) is missing.`,
-                    recommendation: 'Install the missing library mod matching your game version.',
+                    title: specificLib ? `Missing ${specificLib}` : 'Missing Library or Dependency',
+                    explanation: specificLib 
+                        ? `The server crashed because ${specificLib} is required but not found (missing class: '${missingClass}').`
+                        : `The server crashed because a required class was not found: '${missingClass}'. This usually means a library mod is missing.`,
+                    recommendation: specificLib 
+                        ? `Download and install the latest ${specificLib} for Minecraft ${server.version}.`
+                        : 'Install the missing library mod matching your game version.',
                     connectedCrashReport: {
                         id: crashReport.filename,
-                        analysis: `Missing Dependency: ${missingClass}`
+                        analysis: `Missing Dependency: ${specificLib || missingClass}`
                     },
                     timestamp: Date.now()
                 };
              }
         }
 
-        // 2. Standard Log Analysis
-        const errorLine = logs.find(l => /requires \S+ but none is available/i.test(l) || /Missing dependencies/i.test(l));
-        if (errorLine) {
+        // 2. Standard Log Analysis (Supports multi-line messages)
+        const logContent = logs.join('\n');
+        const hasRequires = /requires/i.test(logContent);
+        const hasMissing = /but (?:none is available|it is not installed)/i.test(logContent) || /Missing dependencies/i.test(logContent);
+        
+        if (hasRequires && hasMissing) {
+             let specificLib = '';
+             
+             // Try to extract specific mod name
+             const nameMatch = logContent.match(/requires (['"\w\-\s\.]+?) but/is);
+             if (nameMatch) {
+                 specificLib = nameMatch[1].replace(/['"]/g, '').trim();
+             }
+
+             if (!specificLib) {
+                 if (logContent.includes('fabric')) specificLib = 'Fabric API';
+                 if (logContent.includes('architectury')) specificLib = 'Architectury API';
+                 if (logContent.includes('quilt')) specificLib = 'Quilt Standard Libraries';
+             }
+
              return {
                 id: `dep-${server.id}-${Date.now()}`,
                 ruleId: 'mod_dependency',
                 severity: 'CRITICAL',
-                title: 'Missing Mod Dependency',
-                explanation: `The server failed to load because a mod dependency is missing. Error trace: "${errorLine.substring(0, 100)}..."`,
-                recommendation: 'Check the logs for the specific missing mod name and install it.',
+                title: specificLib ? `Missing ${specificLib}` : 'Missing Mod Dependency',
+                explanation: specificLib 
+                    ? `The server failed to load because ${specificLib} is required by your mods but is not installed.`
+                    : `The server failed to load because a mod dependency is missing. Details: "${logContent.substring(0, 150)}..."`,
+                recommendation: specificLib 
+                    ? `Download and install the latest version of ${specificLib} for Minecraft ${server.version}.`
+                    : 'Check the logs for the specific missing mod name and install it.',
                 timestamp: Date.now()
              };
+        }
+        return null;
+    }
+};
+
+export const DiskSpaceRule: DiagnosisRule = {
+    id: 'disk_space_full',
+    name: 'Disk Space Exhausted',
+    description: 'Checks for "No space left on device" errors',
+    triggers: [
+        /No space left on device/i,
+        /java.io.IOException: (?!.*closed).*/i // Catch generic IO exceptions that might be space related
+    ],
+    tier: 1,
+    defaultConfidence: 100,
+    analyze: async (server: ServerConfig, logs: string[], env: SystemStats): Promise<DiagnosisResult | null> => {
+        if (logs.some(l => /No space left on device/i.test(l))) {
+            return {
+                id: `disk-${server.id}-${Date.now()}`,
+                ruleId: 'disk_space_full',
+                severity: 'CRITICAL',
+                title: 'Disk Space Full',
+                explanation: 'The server cannot write any more data because the disk is full. This prevents logs, world saves, and player data from being saved.',
+                recommendation: 'Check your server drive for large files, old backups, or massive log files and delete them to free up space.',
+                timestamp: Date.now()
+            };
+        }
+        return null;
+    }
+};
+
+export const ForgeLibraryMissingRule: DiagnosisRule = {
+    id: 'forge_libraries_missing',
+    name: 'Missing Forge/Fabric Libraries',
+    description: 'Checks if the libraries folder exists for modded servers',
+    triggers: [
+        /Error: Could not find or load main class/i,
+        /NoClassDefFoundError: net\/minecraft/i
+    ],
+    tier: 2,
+    defaultConfidence: 95,
+    analyze: async (server: ServerConfig): Promise<DiagnosisResult | null> => {
+        const isModded = ['Forge', 'Fabric', 'NeoForge', 'Quilt'].includes(server.software);
+        if (!isModded || !server.workingDirectory) return null;
+
+        const libsDir = path.join(server.workingDirectory, 'libraries');
+        if (!(await fs.pathExists(libsDir))) {
+            return {
+                id: `mod-libs-${server.id}-${Date.now()}`,
+                ruleId: 'forge_libraries_missing',
+                severity: 'CRITICAL',
+                title: 'Missing Loader Libraries',
+                explanation: `The "libraries" directory is missing. modded servers require this folder to load Minecraft and the modloader.`,
+                recommendation: 'Re-run the server installer (Forge/Fabric) to regenerate the libraries folder.',
+                timestamp: Date.now()
+            };
         }
         return null;
     }
@@ -451,15 +690,21 @@ export const DuplicateModRule: DiagnosisRule = {
         /Duplicate mods found/i,
         /Found a duplicate mod/i
     ],
+    tier: 2,
+    defaultConfidence: 100,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats, crashReport?: CrashReport): Promise<DiagnosisResult | null> => {
-        if (logs.some(l => /Duplicate mods found/i.test(l) || /Found a duplicate mod/i.test(l))) {
+        const logLine = logs.find(l => /Duplicate mods found/i.test(l) || /Found a duplicate mod/i.test(l));
+        if (logLine) {
+             const modMatch = logLine.match(/Found a duplicate mod: (\S+)/i) || logLine.match(/Duplicate mods found: ([\w, ]+)/i);
+             const modName = modMatch ? modMatch[1] : 'Unknown Mod';
+
              return {
                 id: `dup-mod-${server.id}-${Date.now()}`,
                 ruleId: 'duplicate_mod',
                 severity: 'CRITICAL',
-                title: 'Duplicate Mods Detected',
-                explanation: 'Multiple versions of the same mod are installed, causing a conflict.',
-                recommendation: 'Check your mods folder and delete older/duplicate execution of the same mod.',
+                title: `Duplicate Mod: ${modName}`,
+                explanation: `Multiple versions of the mod '${modName}' are installed, which the mod loader cannot handle.`,
+                recommendation: `Check your 'mods' folder and delete older/duplicate versions of ${modName}.`,
                 timestamp: Date.now()
             };
         }
@@ -473,17 +718,25 @@ export const MixinConflictRule: DiagnosisRule = {
     description: 'Checks for Sponge/Mixin injection failures',
     triggers: [
         /Mixin apply failed/i,
-        /org.spongepowered.asm.mixin.transformer.throwables.MixinTransformerError/i
+        /org.spongepowered.asm.mixin.transformer.throwables.MixinTransformerError/i,
+        /Critical injection failure/i
     ],
+    tier: 3,
+    defaultConfidence: 90,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats, crashReport?: CrashReport): Promise<DiagnosisResult | null> => {
-         if (logs.some(l => /Mixin apply failed/i.test(l) || /MixinTransformerError/i.test(l))) {
+        const triggerLine = logs.find(l => /Mixin apply failed/i.test(l) || /transformer.throwables.MixinTransformerError/i.test(l) || /Critical injection failure/i.test(l));
+        if (triggerLine) {
+             const extractionLine = logs.find(l => /in mixin/i.test(l) || /from (?:mod )/i.test(l)) || triggerLine;
+             const targetMatch = extractionLine.match(/in mixin ([\w\.]+)/i) || extractionLine.match(/from (?:mod )?([\w\.]+)/i);
+             const target = targetMatch ? targetMatch[1] : 'an unknown mod';
+
              return {
                 id: `mixin-${server.id}-${Date.now()}`,
                 ruleId: 'mixin_conflict',
                 severity: 'CRITICAL',
                 title: 'Mod Incompatibility (Mixin)',
-                explanation: 'A mod is failing to inject code into the game (Mixin Error). This usually means two mods are incompatible.',
-                recommendation: 'Try removing recently added mods or check mod compatibility lists.',
+                explanation: `A mod (${target}) failed to inject code into Minecraft via Mixin. This usually means two mods are trying to modify the same part of the game.`,
+                recommendation: `Try removing '${target}' or checking for an updated version compatible with your other mods.`,
                 timestamp: Date.now()
             };
         }
@@ -499,16 +752,27 @@ export const TickingEntityRule: DiagnosisRule = {
         /Ticking entity/i,
         /Entity being ticked/i
     ],
+    tier: 3,
+    defaultConfidence: 90,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats, crashReport?: CrashReport): Promise<DiagnosisResult | null> => {
-        const errorLine = logs.find(l => /Ticking entity/i.test(l));
-        if (errorLine) {
+        const triggerLine = logs.find(l => /Ticking entity/i.test(l) || /Entity being ticked/i.test(l) || /Description: Ticking entity/i.test(l));
+        if (triggerLine) {
+             const entityLine = logs.find(l => /Entity Type: ([\w:]+)/i.test(l) || /Entity being ticked: ([\w:]+)/i.test(l)) || triggerLine;
+             const posLine = logs.find(l => /at (-?\d+\.?\d*),\s*(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/i.test(l)) || triggerLine;
+
+             const entityMatch = entityLine.match(/Entity Type: ([\w:]+)/i) || entityLine.match(/Entity being ticked: ([\w:]+)/i);
+             const posMatch = posLine.match(/at (-?\d+\.?\d*),\s*(-?\d+\.?\d*),\s*(-?\d+\.?\d*)/i);
+             
+             const entityType = entityMatch ? entityMatch[1] : 'Unknown Entity';
+             const position = posMatch ? ` at X:${posMatch[1]}, Y:${posMatch[2]}, Z:${posMatch[3]}` : '';
+
              return {
-                id: `tick-ent-${server.id}-${Date.now()}`,
+                id: `ticking-ent-${server.id}-${Date.now()}`,
                 ruleId: 'ticking_entity',
                 severity: 'CRITICAL',
-                title: 'Ticking Entity Crash',
-                explanation: 'The server crashed while processing a specific entity (mob/item).',
-                recommendation: 'You may need to use a tool like NBTExplorer to remove the entity, or set remove-erroring-entities=true in config (Forge).',
+                title: `Ticking Entity Crash: ${entityType}`,
+                explanation: `A specific entity (${entityType})${position} caused the server to crash. This is often a corrupted entity or a mod bug.`,
+                recommendation: `You can try deleting the entity using NBTExplorer or world-edit, or restore a backup if the crash persists.`,
                 timestamp: Date.now()
             };
         }
@@ -527,6 +791,8 @@ export const WatchdogRule: DiagnosisRule = {
         /The server has stopped responding!/i,
         /Paper Watchdog Thread/i
     ],
+    tier: 3,
+    defaultConfidence: 100,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats, crashReport?: CrashReport): Promise<DiagnosisResult | null> => {
         if (logs.some(l => /The server has stopped responding!/i.test(l))) {
              return {
@@ -553,6 +819,8 @@ export const WorldCorruptionRule: DiagnosisRule = {
         /Corrupted chunk mismatch/i,
         /RegionFile/i // Crash report
     ],
+    tier: 3,
+    defaultConfidence: 95,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats, crashReport?: CrashReport): Promise<DiagnosisResult | null> => {
         // 1. Crash Report Analysis
         if (crashReport) {
@@ -574,14 +842,26 @@ export const WorldCorruptionRule: DiagnosisRule = {
         }
 
         // 2. Log Analysis
-        if (logs.some(l => /Exception reading .*level.dat/i.test(l) || /Corrupted chunk/i.test(l))) {
+        const corruptionLine = logs.find(l => /Failed to read level.dat/i.test(l) || /Corrupted chunk/i.test(l) || /Chunk file at .* is in the wrong location/i.test(l));
+        if (corruptionLine) {
+             let chunkInfo = '';
+             const coordsMatch = corruptionLine.match(/at (?:chunk )?(-?\d+), (-?\d+)/i);
+             if (coordsMatch) {
+                 chunkInfo = ` near coordinates X:${parseInt(coordsMatch[1]) * 16}, Z:${parseInt(coordsMatch[2]) * 16} (Chunk ${coordsMatch[1]}, ${coordsMatch[2]})`;
+             }
+
              return {
                 id: `world-corrupt-${server.id}-${Date.now()}`,
                 ruleId: 'world_corruption',
                 severity: 'CRITICAL',
-                title: 'World Data Corruption',
-                explanation: 'The server detected corrupted world files (level.dat or chunks). This often happens after a power outage or crash.',
-                recommendation: 'Restore the world from a backup immediately. Do not keep running the server as it may cause further damage.',
+                title: 'World Data Corruption Detected',
+                explanation: `The server detected corrupted world files${chunkInfo}. This often happens after a power outage, crash, or downgrading Minecraft versions.`,
+                recommendation: 'Restore the world from a backup immediately. If no backup exists, you may need a region repair tool like Chunky.',
+                action: corruptionLine.toLowerCase().includes('level.dat') ? {
+                    type: 'RESTORE_DATA_BACKUP',
+                    payload: { filename: 'level.dat', reason: 'corruption' },
+                    autoHeal: false // Don't auto-restore backups without user confirmation
+                } : undefined,
                 timestamp: Date.now()
             };
         }
@@ -598,6 +878,8 @@ export const NativeCrashRule: DiagnosisRule = {
         /EXCEPTION_ACCESS_VIOLATION/i,
         /SIGSEGV/i
     ],
+    tier: 1,
+    defaultConfidence: 100,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats, crashReport?: CrashReport): Promise<DiagnosisResult | null> => {
         if (crashReport && crashReport.filename.startsWith('hs_err_pid')) {
              return {
@@ -623,6 +905,8 @@ export const AikarsFlagsRule: DiagnosisRule = {
     name: 'Missing Performance Flags',
     description: 'Recommends Aikars Flags for servers with sufficient RAM',
     triggers: [], // Run always (or conditionally on startup)
+    tier: 3,
+    defaultConfidence: 100,
     isHealable: true,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats, crashReport?: CrashReport): Promise<DiagnosisResult | null> => {
         if (server.ram >= 4 && !server.advancedFlags?.aikarFlags) {
@@ -653,6 +937,8 @@ export const TelemetryRule: DiagnosisRule = {
         /Stopping!/i,
         /Saving chunks/i
     ],
+    tier: 3,
+    defaultConfidence: 80,
     isHealable: true,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats, crashReport?: CrashReport): Promise<DiagnosisResult | null> => {
         // Triggered by specific log patterns that imply a long session or frequent restarts
@@ -687,6 +973,8 @@ export const NetworkProtocolRule: DiagnosisRule = {
         /Outdated client/i,
         /Incompatible FML modded server/i
     ],
+    tier: 3,
+    defaultConfidence: 90,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats, crashReport?: CrashReport): Promise<DiagnosisResult | null> => {
         const mismatch = logs.find(l => /Outdated/i.test(l) || /Incompatible/i.test(l));
         if (mismatch) {
@@ -724,6 +1012,8 @@ export const PacketTooBigRule: DiagnosisRule = {
         /PacketTooBigException/i,
         /Packet was larger than/i
     ],
+    tier: 3,
+    defaultConfidence: 100,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats, crashReport?: CrashReport): Promise<DiagnosisResult | null> => {
         if (logs.some(l => /PacketTooBig/i.test(l))) {
              return {
@@ -749,6 +1039,8 @@ export const NetworkOfflineRule: DiagnosisRule = {
         /authserver.mojang.com/i,
         /sessionserver.mojang.com/i
     ],
+    tier: 1,
+    defaultConfidence: 90,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats, crashReport?: CrashReport): Promise<DiagnosisResult | null> => {
         if (logs.some(l => /UnknownHostException/i.test(l) || /authserver\.mojang\.com/i.test(l))) {
              return {
@@ -770,6 +1062,8 @@ export const ConfigSyncRule: DiagnosisRule = {
     name: 'Configuration Out of Sync',
     description: 'Checks if server.properties matches the configured settings in the dashboard',
     triggers: [], // Run periodically/manually
+    tier: 2,
+    defaultConfidence: 100,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats, crashReport?: CrashReport): Promise<DiagnosisResult | null> => {
         const sync = await serverConfigService.verifyConfig(server);
         if (!sync.synchronized && sync.mismatches.length > 0) {
@@ -796,6 +1090,8 @@ export const MemoryMonitorRule: DiagnosisRule = {
     id: 'memory_leak',
     name: 'Memory Leak Detection',
     description: 'Monitors the process heap usage for potential leaks',
+    tier: 3,
+    defaultConfidence: 70,
     triggers: [], // Run periodically
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats): Promise<DiagnosisResult | null> => {
         const mem = process.memoryUsage();
@@ -827,6 +1123,8 @@ export const DataIntegrityRule: DiagnosisRule = {
     id: 'data_integrity',
     name: 'Database Integrity Check',
     description: 'Verifies the integrity of core JSON storage files',
+    tier: 1,
+    defaultConfidence: 100,
     triggers: [], // Run periodically
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats): Promise<DiagnosisResult | null> => {
         const { DATA_DIR } = require('../../constants');
@@ -864,6 +1162,8 @@ export const TpsLagRule: DiagnosisRule = {
     id: 'tps_lag',
     name: 'Server TPS Performance',
     description: 'Monitors Ticks Per Second and "Can\'t keep up" warnings',
+    tier: 3,
+    defaultConfidence: 85,
     triggers: [], // Metrics and logs
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats): Promise<DiagnosisResult | null> => {
         const lagLines = logs.filter(l => l.includes("Can't keep up!"));
@@ -900,6 +1200,8 @@ export const ResourceExhaustionRule: DiagnosisRule = {
     id: 'cpu_exhaustion',
     name: 'Resource Exhaustion',
     description: 'Detects CPU starvation and thread locking',
+    tier: 1,
+    defaultConfidence: 90,
     triggers: [], // Metrics and logs
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats): Promise<DiagnosisResult | null> => {
         if (env.cpu !== undefined && env.cpu > 90 && (env.tps || 20) < 18) {
@@ -922,6 +1224,8 @@ const NodeHealthRule: DiagnosisRule = {
     name: 'Node Health Check',
     description: 'Checks if the server\'s assigned node is offline',
     triggers: [], // Metrics-based trigger
+    tier: 1,
+    defaultConfidence: 100,
     analyze: async (server: ServerConfig, logs: string[], env: SystemStats): Promise<DiagnosisResult | null> => {
         if (env.nodeStatus === 'OFFLINE') {
             return {
@@ -932,6 +1236,56 @@ const NodeHealthRule: DiagnosisRule = {
                 explanation: `The node hosting this server ("${server.nodeId}") has not sent a heartbeat recently. The server may still be running but is unreachable for management.`,
                 recommendation: 'Check if the node agent is running and has internet access.',
                 timestamp: Date.now()
+            };
+        }
+        return null;
+    }
+};
+
+/**
+ * Detects log spamming which can cause disk exhaustion and lag
+ */
+export const LogSpamRule: DiagnosisRule = {
+    id: 'log_spam_detected',
+    name: 'Critical Log Spam',
+    description: 'Detects excessive repetitive logging typically caused by broken plugins or entity errors.',
+    triggers: [
+        /\[STDOUT\]/i,
+        /Skipping Entity with id/i,
+        /Keeping entity .* that already exists with UUID/i,
+        /can't keep up!/i
+    ],
+    tier: 3,
+    defaultConfidence: 75,
+    analyze: async (server: ServerConfig, logs: string[]): Promise<DiagnosisResult | null> => {
+        // Count repetitive lines
+        const lineCounts: Record<string, number> = {};
+        let heavySpam = false;
+        let spamPattern = '';
+
+        for (const line of logs.slice(-200)) {
+            // Remove timestamps and levels for better matching
+            const content = line.replace(/^\d{2}:\d{2}:\d{2} \[(INFO|WARN|ERROR)\]:? /i, '').trim();
+            if (content.length < 10) continue;
+            
+            lineCounts[content] = (lineCounts[content] || 0) + 1;
+            if (lineCounts[content] > 30) {
+                heavySpam = true;
+                spamPattern = content;
+                break;
+            }
+        }
+
+        if (heavySpam) {
+            return {
+                id: `spam-${server.id}-${Date.now()}`,
+                ruleId: 'log_spam_detected',
+                severity: 'WARNING',
+                title: 'Aggressive Log Spam Detected',
+                explanation: `The server is spamming identical log messages repeatedly: "${spamPattern.substring(0, 50)}...". This can lead to massive log files and server lag.`,
+                recommendation: 'Check the mentioned plugin or entity. You may need to kill the ticking entity or update the offending plugin.',
+                timestamp: Date.now(),
+                confidence: 85
             };
         }
         return null;
@@ -967,6 +1321,9 @@ export const CoreRules: DiagnosisRule[] = [
     DataIntegrityRule,
     TpsLagRule,
     NodeHealthRule,
+    DiskSpaceRule,
+    ForgeLibraryMissingRule,
+    LogSpamRule,
     ...PluginRules,
     ...BedrockRules
 ];

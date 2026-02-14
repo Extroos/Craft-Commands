@@ -214,7 +214,7 @@ const Header: React.FC<HeaderProps> = ({
     };
 
     return (
-        <header className={`fixed top-0 left-0 w-full border-b border-border z-50 transition-all duration-300 ${user?.preferences.visualQuality ? 'glass-morphism' : 'bg-card shadow-sm'}`}>
+        <header className={`fixed top-0 left-0 w-full border-b border-border z-[100] transition-all duration-300 ${user?.preferences.visualQuality ? 'glass-morphism' : 'bg-card shadow-sm'}`}>
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
                 <div className="flex h-16 items-center justify-between">
                     {/* Brand Area */}
@@ -471,7 +471,7 @@ const Header: React.FC<HeaderProps> = ({
                                         animate={{ opacity: 1, y: 0, scale: 1 }}
                                         exit={{ opacity: 0, y: 10, scale: 0.95 }}
                                         transition={{ duration: 0.15 }}
-                                        className="absolute top-full right-0 mt-2 w-56 bg-card border border-border rounded-lg shadow-2xl z-50 p-1"
+                                        className="absolute top-full right-0 mt-2 w-56 bg-card border border-border rounded-lg shadow-2xl z-[110] p-1"
                                     >
                                         <div className="p-2 border-b border-border/50 mb-1">
                                             <p className="text-xs font-semibold text-foreground truncate">{user?.email || 'Guest'}</p>

@@ -37,6 +37,33 @@ const upload = multer({
     }
 });
 
+// Configure storage for avatars
+const avatarStorage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        const dir = DATA_PATHS.AVATARS_UPLOADS_DIR;
+        fs.ensureDirSync(dir);
+        cb(null, dir);
+    },
+    filename: (req, file, cb) => {
+        const user = (req as any).user;
+        const uniqueSuffix = Date.now();
+        const ext = path.extname(file.originalname);
+        cb(null, `avatar-${user?.id || 'unknown'}-${uniqueSuffix}${ext}`);
+    }
+});
+
+const uploadAvatar = multer({
+    storage: avatarStorage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // 5MB limit for avatars
+    fileFilter: (req, file, cb) => {
+        const allowedTypes = /jpeg|jpg|png|webp/;
+        const ext = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mime = allowedTypes.test(file.mimetype);
+        if (ext && mime) return cb(null, true);
+        cb(new Error('Only images are allowed (jpeg, jpg, png, webp)'));
+    }
+});
+
 router.post('/background', verifyToken, upload.single('file'), async (req, res) => {
     console.log('[Assets] POST /background received');
     try {
@@ -48,6 +75,24 @@ router.post('/background', verifyToken, upload.single('file'), async (req, res) 
         const publicUrl = `/uploads/backgrounds/${req.file.filename}`;
         
         auditService.log(user.id, 'ASSET_UPLOAD', 'BACKGROUND', { filename: req.file.filename }, req.ip, user.email);
+        
+        res.json({ url: publicUrl });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
+});
+
+router.post('/avatar', verifyToken, uploadAvatar.single('file'), async (req, res) => {
+    console.log('[Assets] POST /avatar received');
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+
+        const user = (req as any).user;
+        const publicUrl = `/uploads/avatars/${req.file.filename}`;
+        
+        auditService.log(user.id, 'ASSET_UPLOAD', 'AVATAR', { filename: req.file.filename }, req.ip, user.email);
         
         res.json({ url: publicUrl });
     } catch (e: any) {

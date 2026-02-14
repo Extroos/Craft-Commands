@@ -2,6 +2,7 @@
 import fs from 'fs-extra';
 import path from 'path';
 import { EventEmitter } from 'events';
+import { NetworkConfig } from '@shared/types/network';
 
 const DATA_DIR = path.join(process.cwd(), 'data');
 const SETTINGS_FILE = path.join(DATA_DIR, 'settings.json');
@@ -38,6 +39,11 @@ export interface SystemSettings {
             enabled: boolean;
         };
         autoHealing?: boolean;
+        autoHealingV3?: {
+            driftDetectionEnabled: boolean;
+            ioThrottlingThreshold: number; // 0-100 percentage
+            healthSnapshotInterval: number; // minutes
+        };
     };
 }
 
@@ -71,7 +77,12 @@ class SystemSettingsService extends EventEmitter {
                         dockerEnabled: false,
                         storageProvider: 'json',
                         distributedNodes: { enabled: false },
-                        autoHealing: true
+                        autoHealing: true,
+                        autoHealingV3: {
+                            driftDetectionEnabled: true,
+                            ioThrottlingThreshold: 80,
+                            healthSnapshotInterval: 5
+                        }
                     }
                 };
                 fs.writeJSONSync(SETTINGS_FILE, defaultSettings, { spaces: 4 });
@@ -91,6 +102,13 @@ class SystemSettingsService extends EventEmitter {
                 }
                 if (loaded.app.autoHealing === undefined) {
                     loaded.app.autoHealing = true;
+                }
+                if (loaded.app.autoHealingV3 === undefined) {
+                    loaded.app.autoHealingV3 = {
+                        driftDetectionEnabled: true,
+                        ioThrottlingThreshold: 80,
+                        healthSnapshotInterval: 5
+                    };
                 }
             }
             return loaded;

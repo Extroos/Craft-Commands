@@ -1,191 +1,296 @@
+import si from 'systeminformation';
+import fs from 'fs';
+import path from 'path';
 import { processManager } from '../processes/ProcessManager';
 import { logger } from '../../utils/logger';
 import { diagnosisService } from '../diagnosis/DiagnosisService';
 import { autoHealingManager } from '../diagnosis/AutoHealingManager';
-import net from 'net';
 import { NetUtils } from '../../utils/NetUtils';
+import { RecoveryStage, RecoveryState, StabilityMarker } from '@shared/types/health';
+import { systemSettingsService } from '../system/SystemSettingsService';
 
+/**
+ * AutoHealing v3: Proactive Health Management
+ * Orchestrates a state-aware recovery pipeline and protects host resources.
+ */
 class AutoHealingService {
     private checkInterval: NodeJS.Timeout | null = null;
-    private restartAttempts: Map<string, number> = new Map();
+    private activeRecoveries: Map<string, RecoveryState> = new Map();
+    private stabilityMarkers: Map<string, StabilityMarker> = new Map();
     private healthCheckLocks: Set<string> = new Set();
+    
+    private STABILITY_FILE = path.join(process.cwd(), 'backend', 'data', 'stability.json');
+    private HEALTH_LOG_FILE = path.join(process.cwd(), 'logs', 'health.log');
 
     constructor() {
-        // Initialization moved to explicit call
+        this.ensureDirectories();
+        this.loadStabilityMarkers();
+    }
+
+    private ensureDirectories() {
+        const dataDir = path.dirname(this.STABILITY_FILE);
+        const logDir = path.dirname(this.HEALTH_LOG_FILE);
+        if (!fs.existsSync(dataDir)) fs.mkdirSync(dataDir, { recursive: true });
+        if (!fs.existsSync(logDir)) fs.mkdirSync(logDir, { recursive: true });
+    }
+
+    private loadStabilityMarkers() {
+        try {
+            if (fs.existsSync(this.STABILITY_FILE)) {
+                const data = JSON.parse(fs.readFileSync(this.STABILITY_FILE, 'utf-8'));
+                Object.keys(data).forEach(id => {
+                    this.stabilityMarkers.set(id, data[id]);
+                });
+                logger.info(`[AutoHealing] Loaded ${this.stabilityMarkers.size} stability markers from disk.`);
+            }
+        } catch (e: any) {
+            logger.error(`[AutoHealing] Failed to load stability markers: ${e.message}`);
+        }
+    }
+
+    private saveStabilityMarkers() {
+        try {
+            const data: Record<string, StabilityMarker> = {};
+            this.stabilityMarkers.forEach((marker, id) => {
+                data[id] = marker;
+            });
+            fs.writeFileSync(this.STABILITY_FILE, JSON.stringify(data, null, 2));
+        } catch (e: any) {
+            logger.error(`[AutoHealing] Failed to save stability markers: ${e.message}`);
+        }
     }
 
     public initialize() {
-        // Initial delay to let system settle
         setTimeout(() => {
             this.startMonitoring();
-            this.listenForCrashes();
+            this.listenToProcessEvents();
         }, 10000);
     }
 
-    private startMonitoring() {
-        logger.info('[AutoHealing] Intelligence Engine ACTIVE. Monitoring health vectors...');
-        
-        // Dynamic Interval Loop
-        this.checkInterval = setInterval(() => {
-            const { getServers } = require('./ServerService');
-            const servers = getServers();
-            
-            for (const server of servers) {
-                if (server.advancedFlags?.autoHealing || server.crashDetection) {
-                    // Respect custom interval if set, otherwise default to 60s
-                    // We use the same loop but filter based on timestamp to avoid multiple intervals
-                    const interval = (server.advancedFlags?.healthCheckInterval || 60) * 1000;
-                    const lastCheck = (this as any)[`lastCheck_${server.id}`] || 0;
-                    
-                    if (Date.now() - lastCheck >= interval) {
-                        (this as any)[`lastCheck_${server.id}`] = Date.now();
-                        this.evalHealth(server);
-                    }
-                }
-            }
-        }, 10000); // Internal tick every 10s to react faster to custom intervals
-    }
-
-    private listenForCrashes() {
+    private async listenToProcessEvents() {
         processManager.on('status', ({ id, status }) => {
             if (status === 'CRASHED') {
-                const { getServer } = require('./ServerService');
-                const server = getServer(id);
-                if (server?.advancedFlags?.autoHealing || server?.crashDetection) {
-                    logger.warn(`[AutoHealing:${id}] Abnormal termination detected. Triggering recovery protocol...`);
-                    this.triggerRecovery(id, 'CRASH_RECOVERY');
-                }
+                this.initiateRecovery(id, 'CRASH_DETECTED');
             }
         });
     }
 
-// Removed pingSocket in favor of NetUtils
-
-    private async evalHealth(server: any) {
-        if (this.healthCheckLocks.has(server.id)) return;
+    private startMonitoring() {
+        logger.info('[AutoHealing] v3 Proactive Intelligence ACTIVE. Monitoring health vectors...');
         
-        // Only check if supposed to be online
-        const isRunning = processManager.isRunning(server.id);
-        const status = processManager.getCachedStatus(server.id);
-        
-        if (!isRunning && server.autoStart) {
-             // Server should be running but isn't
-             this.triggerRecovery(server.id, 'ZOMBIE_REPAIR');
-             return;
-        }
+        // Main Loop: 10s tick
+        this.checkInterval = setInterval(async () => {
+            const v3Settings = systemSettingsService.getSettings().app.autoHealingV3;
+            const { getServers } = require('./ServerService');
+            const servers = getServers();
+            const hostHealth = await this.checkHostHealth();
 
-        if (isRunning && status.status === 'ONLINE') {
-             // Deep Health Check: Socket Test
-             this.healthCheckLocks.add(server.id);
-             try {
-                 const isHealthy = await NetUtils.checkServiceHealth(server.port);
-                 if (!isHealthy) {
-                     logger.error(`[AutoHealing:${server.id}] Health test FAILED (Socket Timeout). Instance may be hung.`);
-                     this.triggerRecovery(server.id, 'HUNG_PROCESS_RESTART');
-                 }
-             } finally {
-                 this.healthCheckLocks.delete(server.id);
-             }
+            for (const server of servers) {
+                // 1. Skip if already in safe mode
+                const marker = this.getStabilityMarker(server.id);
+                if (marker.isSafeMode) continue;
+
+                // 2. Drift Detection (v3) - Always active if Auto-Healing is ON
+                const isDriftFixActive = v3Settings?.driftDetectionEnabled !== false; // Default to true
+                if (isDriftFixActive && server.status === 'ONLINE' && !processManager.isRunning(server.id)) {
+                    logger.warn(`[AutoHealing] Drift Detected for ${server.id} (Status ONLINE but PID missing). Triggering repair.`);
+                    this.initiateRecovery(server.id, 'DRIFT_REPAIR');
+                    continue;
+                }
+
+                // 3. Proactive Health Evaluation
+                if (server.advancedFlags?.autoHealing || server.crashDetection) {
+                    const lastCheck = (this as any)[`lastCheck_${server.id}`] || 0;
+                    const interval = (server.advancedFlags?.healthCheckInterval || 60) * 1000;
+
+                    if (Date.now() - lastCheck >= interval) {
+                        (this as any)[`lastCheck_${server.id}`] = Date.now();
+                        this.evalServerHealth(server, hostHealth);
+                    }
+                }
+            }
+
+            // 4. Log Snapshot (v3)
+            const snapshotInterval = v3Settings?.healthSnapshotInterval || 5;
+            const lastSnapshot = (this as any).lastSnapshot || 0;
+            if (Date.now() - lastSnapshot >= snapshotInterval * 60000) {
+                (this as any).lastSnapshot = Date.now();
+                this.logHealthSnapshot(hostHealth);
+            }
+        }, 10000);
+    }
+
+    public async checkHostHealth() {
+        const v3Settings = systemSettingsService.getSettings().app.autoHealingV3;
+        try {
+            const mem = await si.mem();
+            const cpu = await si.currentLoad();
+            const fsStats = await si.fsStats();
+            
+            const memoryPressure = (mem.active / mem.total) * 100;
+            const cpuLoad = cpu.currentLoad;
+            const diskIO = fsStats.wx_sec + fsStats.rx_sec; // Bytes per second
+
+            const isOverloaded = memoryPressure > 92 || cpuLoad > 95 || diskIO > ((v3Settings?.ioThrottlingThreshold || 80) * 1024 * 1024 * 5); // Rough conversion to bps
+            
+            if (isOverloaded) {
+                const reason = memoryPressure > 92 ? 'RAM' : cpuLoad > 95 ? 'CPU' : 'DISK_IO';
+                logger.warn(`[AutoHealing:Sentinel] System Overload Detected (${reason}). Throttling active recoveries.`);
+            }
+
+            return { cpuLoad, memoryPressure, diskIO, isOverloaded, memoryTotal: mem.total };
+        } catch (e) {
+            return { cpuLoad: 0, memoryPressure: 0, diskIO: 0, isOverloaded: false };
         }
     }
 
-    private ruleAttempts: Map<string, number> = new Map();
+    private logHealthSnapshot(health: any) {
+        const timestamp = new Date().toISOString();
+        const entry = `[${timestamp}] CPU: ${Math.round(health.cpuLoad)}% | RAM: ${Math.round(health.memoryPressure)}% | IO: ${Math.round(health.diskIO / 1024 / 1024)}MB/s | Recoveries: ${this.activeRecoveries.size}\n`;
+        try {
+            fs.appendFileSync(this.HEALTH_LOG_FILE, entry);
+        } catch (e) {}
+    }
 
-    private async triggerRecovery(serverId: string, reason: string) {
-        const attempts = this.restartAttempts.get(serverId) || 0;
+    private async evalServerHealth(server: any, hostHealth: any) {
+        if (this.healthCheckLocks.has(server.id) || this.activeRecoveries.has(server.id)) return;
+
+        const isRunning = processManager.isRunning(server.id);
         
-        // Max 3 retries per 10 minutes to prevent infinite loops on corrupted installs
-        if (attempts >= 3) {
-            logger.error(`[AutoHealing:${serverId}] Max recovery attempts reached. manual intervention required.`);
+        if (!isRunning && server.autoStart) {
+            this.initiateRecovery(server.id, 'ZOMBIE_REPAIR');
             return;
         }
 
-        const { startServer, stopServer } = require('./ServerService');
-        
-        logger.info(`[AutoHealing:${serverId}] Initiating ${reason} (Attempt ${attempts + 1}/3)`);
-        
-        // Emit Recovery Status to UI
-        processManager.updateCachedStatus(serverId, { status: 'RECOVERING', online: false });
-        
-        // --- DEEP DIAGNOSIS PHASE ---
-        try {
-            const logs = processManager.getLogs(serverId);
-            // Mock system stats for diagnosis
-            const stats = { totalMemory: 0, freeMemory: 0, javaVersion: 'unknown' }; 
-            const diagnosis = await diagnosisService.diagnose(require('./ServerService').getServer(serverId), logs, stats);
-            
-            const healableAction = diagnosis.find(d => d.action?.autoHeal);
-
-            if (healableAction && healableAction.action) {
-                const ruleKey = `${serverId}:${healableAction.ruleId}`;
-                const ruleRetries = this.ruleAttempts.get(ruleKey) || 0;
-
-                if (ruleRetries >= 2) {
-                     logger.warn(`[AutoHealing:${serverId}] Rule '${healableAction.ruleId}' has failed ${ruleRetries} times. Skipping auto-fix to prevent loops.`);
-                     // Fallthrough to standard restart or other fixes
-                } else {
-                    logger.info(`[AutoHealing:${serverId}] Proactive Stabilization: ${healableAction.title}. Applying fix...`);
-                    this.ruleAttempts.set(ruleKey, ruleRetries + 1);
-                    await this.applyHealAction(healableAction.action);
-                    // After healing, we continue to startup
+        if (isRunning) {
+            this.healthCheckLocks.add(server.id);
+            try {
+                const isHealthy = await NetUtils.checkServiceHealth(server.port);
+                if (!isHealthy) {
+                    logger.error(`[AutoHealing:${server.id}] Instance HUNG (Port ${server.port} unresponsive).`);
+                    this.initiateRecovery(server.id, 'HUNG_PROCESS_RESTART');
                 }
+            } finally {
+                this.healthCheckLocks.delete(server.id);
             }
-            
-            // Check for fatal errors if no healable action was taken (or it was skipped)
-            const fatalError = diagnosis.find(d => 
-                d.severity === 'CRITICAL' && 
-                ['eula_check', 'missing_jar', 'port_binding', 'java_version', 'bad_config'].includes(d.ruleId)
-            );
-
-            if (fatalError) {
-                // If we skipped the fix (due to loops) AND it's critical, we must abort
-                 const ruleKey = `${serverId}:${fatalError.ruleId}`;
-                 if ((this.ruleAttempts.get(ruleKey) || 0) >= 2) {
-                     logger.error(`[AutoHealing:${serverId}] Recovery ABORTED: ${fatalError.title} persists after fixes.`);
-                     processManager.updateCachedStatus(serverId, { status: 'CRASHED', online: false });
-                     return;
-                 }
-                
-                 if (!healableAction) { // Only abort if we didn't just try to fix it (and it wasn't skipped)
-                    logger.error(`[AutoHealing:${serverId}] Recovery ABORTED: ${fatalError.title}. Manual fix required.`);
-                    processManager.updateCachedStatus(serverId, { status: 'CRASHED', online: false });
-                    return;
-                 }
-            }
-        } catch (diagError) {
-            logger.warn(`[AutoHealing:${serverId}] Diagnosis failed to run, proceeding with cautious recovery.`);
-        }
-
-        try {
-            if (processManager.isRunning(serverId)) {
-                await stopServer(serverId, true); // Force stop
-                await new Promise(r => setTimeout(r, 5000));
-            }
-            
-            await startServer(serverId);
-            this.restartAttempts.set(serverId, attempts + 1);
-            
-            // Re-zero attempts after 10 mins of stability
-            setTimeout(() => {
-                const current = this.restartAttempts.get(serverId) || 0;
-                if (current > 0) this.restartAttempts.set(serverId, current - 1);
-                
-                // Clear rule attempts for this server
-                for (const [key] of this.ruleAttempts) {
-                    if (key.startsWith(`${serverId}:`)) this.ruleAttempts.delete(key);
-                }
-            }, 600000);
-
-        } catch (e: any) {
-            logger.error(`[AutoHealing:${serverId}] Recovery failed: ${e.message}`);
         }
     }
-    private async applyHealAction(action: any) {
+
+    private async initiateRecovery(serverId: string, trigger: string) {
+        if (this.activeRecoveries.has(serverId)) return;
+
+        const marker = this.getStabilityMarker(serverId);
+        if (marker.isSafeMode) return;
+
+        const state: RecoveryState = {
+            serverId,
+            stage: 'TRIAGE',
+            startTime: Date.now(),
+            attempts: marker.consecutiveCrashes + 1,
+            stabilityScore: marker.score
+        };
+
+        this.activeRecoveries.set(serverId, state);
+        this.processPipeline(state);
+    }
+
+    private async processPipeline(state: RecoveryState) {
+        const { serverId } = state;
+        const { getServer, stopServer, startServer } = require('./ServerService');
+        const server = getServer(serverId);
+
         try {
-            await autoHealingManager.executeFix(action.payload.serverId, action.type, action.payload);
+            state.stage = 'TRIAGE';
+            processManager.updateCachedStatus(serverId, { status: 'RECOVERING', details: 'Triaging crash source...' });
+            
+            const logs = processManager.getLogs(serverId);
+            const env: any = await this.checkHostHealth();
+            const diagnosis = await diagnosisService.diagnose(server, logs, {
+                totalMemory: env.memoryTotal || 0,
+                freeMemory: (env.memoryTotal || 0) * (1 - (env.memoryPressure || 0) / 100),
+                javaVersion: server.javaVersion || 'unknown'
+            });
+            const rootCause = diagnosis.find(d => d.isRootCause) || diagnosis[0];
+
+            if (rootCause?.action?.autoHeal) {
+                state.stage = 'REPAIR';
+                logger.info(`[AutoHealing:${serverId}] PIPELINE: Applying targeted fix: ${rootCause.title}`);
+                await autoHealingManager.executeFix(serverId, rootCause.action.type, rootCause.action.payload);
+            }
+
+            state.stage = 'SCRUB';
+            if (processManager.isRunning(serverId)) {
+                await stopServer(serverId, true);
+            }
+
+            state.stage = 'START';
+            const host = await this.checkHostHealth();
+            if (host.isOverloaded && state.attempts > 1) {
+                logger.warn(`[AutoHealing:${serverId}] Throttled: Delaying restart due to system pressure.`);
+                state.stage = 'TRIAGE';
+                setTimeout(() => this.processPipeline(state), 30000);
+                return;
+            }
+
+            await startServer(serverId);
+
+            state.stage = 'VERIFY';
+            logger.info(`[AutoHealing:${serverId}] PIPELINE: Recovery successful. Entering stability watch...`);
+            
+            setTimeout(async () => {
+                const isStillRunning = processManager.isRunning(serverId);
+                if (isStillRunning) {
+                    this.finalizeRecovery(serverId, true);
+                } else {
+                    this.finalizeRecovery(serverId, false);
+                }
+            }, 60000);
+
         } catch (error: any) {
-            logger.error(`[AutoHealing] Execution failed: ${error.message}`);
+            logger.error(`[AutoHealing:${serverId}] Pipeline FAILED at ${state.stage}: ${error.message}`);
+            this.finalizeRecovery(serverId, false);
         }
+    }
+
+    private finalizeRecovery(serverId: string, success: boolean) {
+        const marker = this.getStabilityMarker(serverId);
+        this.activeRecoveries.delete(serverId);
+
+        if (success) {
+            marker.consecutiveCrashes = 0;
+            marker.score = Math.min(100, marker.score + 10);
+            logger.success(`[AutoHealing:${serverId}] Stability Verified. System nominal.`);
+        } else {
+            marker.consecutiveCrashes++;
+            marker.score = Math.max(0, marker.score - 30);
+            marker.lastCrash = Date.now();
+
+            if (marker.consecutiveCrashes >= 3 || marker.score <= 0) {
+                marker.isSafeMode = true;
+                logger.error(`[AutoHealing:${serverId}] Critical Stability Failure. Entering SAFE MODE. Manual intervention required.`);
+                processManager.updateCachedStatus(serverId, { status: 'SAFE_MODE', details: 'Automated recovery failed repeatedly.' });
+            }
+        }
+        this.saveStabilityMarkers();
+    }
+
+    public getAllStabilityMarkers(): StabilityMarker[] {
+        return Array.from(this.stabilityMarkers.values());
+    }
+
+    private getStabilityMarker(serverId: string): StabilityMarker {
+        let marker = this.stabilityMarkers.get(serverId);
+        if (!marker) {
+            marker = {
+                serverId,
+                score: 100,
+                lastCrash: 0,
+                consecutiveCrashes: 0,
+                isSafeMode: false
+            };
+            this.stabilityMarkers.set(serverId, marker);
+        }
+        return marker;
     }
 }
 

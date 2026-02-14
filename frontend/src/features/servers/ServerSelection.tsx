@@ -97,7 +97,7 @@ const ServerSelection: React.FC<ServerSelectionProps> = ({
                     <div className="flex items-center gap-5">
                         <img src="/website-icon.png" className="w-20 h-20 object-contain drop-shadow-sm" alt="CraftCommand" />
                         <div className="space-y-1">
-                            <h1 className="text-2xl font-bold tracking-tight text-foreground">Instance Manager</h1>
+                            <h1 className="text-2xl font-bold tracking-tight text-foreground">CraftCommand</h1>
                             <p className="text-muted-foreground text-sm">Select a deployment to interface with.</p>
                         </div>
                     </div>
@@ -298,6 +298,10 @@ const ServerSelection: React.FC<ServerSelectionProps> = ({
 
                                     <div className="hidden md:flex gap-6 text-xs text-muted-foreground font-mono border-l border-border pl-6">
                                         <div>
+                                            <span className="block text-foreground/50 text-[10px] uppercase tracking-wider mb-0.5">Platform</span>
+                                            <span className="text-foreground">{server.software === 'Bedrock' ? 'Bedrock' : 'Java'}</span>
+                                        </div>
+                                        <div>
                                             <span className="block text-foreground/50 text-[10px] uppercase tracking-wider mb-0.5">Port</span>
                                             <span className="text-foreground">{server.port}</span>
                                         </div>
@@ -324,40 +328,40 @@ const ServerSelection: React.FC<ServerSelectionProps> = ({
                                         )}
                                     </div>
 
-                                    {/* Diagnosis Alert - Stabilized Technical Badge */}
-                                    {server.status === 'CRASHED' && (
-                                        <div className="flex items-center gap-2 px-2 py-1 bg-rose-500/5 text-rose-500 border border-rose-500/20 rounded text-[9px] font-black uppercase tracking-[.15em]">
-                                            <Stethoscope size={11} />
-                                            <span>Analysis Required</span>
-                                            <div className="w-px h-2.5 bg-rose-500/20 mx-0.5"></div>
-                                            <Zap size={10} className="fill-rose-500" />
-                                        </div>
-                                    )}
-
-                                    <div className="flex justify-end items-center gap-3">
-                                        {/* Delete Button (Visible on Hover) */}
-                                        <button 
-                                            disabled={server.status === ServerStatus.ONLINE || server.status === ServerStatus.STARTING || !!installProgress[server.id] || server.status === ServerStatus.INSTALLING}
-                                            onClick={(e) => handleDelete(e, server.id, server.name)}
-                                            className={`p-2 rounded-md opacity-0 group-hover:opacity-100 transition-all ${
-                                                (server.status === ServerStatus.ONLINE || server.status === ServerStatus.STARTING || !!installProgress[server.id] || server.status === ServerStatus.INSTALLING)
-                                                ? 'text-muted-foreground/30 cursor-not-allowed'
-                                                : 'text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10'
-                                            }`}
-                                            title={ (server.status === ServerStatus.ONLINE || server.status === ServerStatus.STARTING) ? "Stop server to delete" : "Delete Instance"}
-                                        >
-                                            <Trash2 size={16} />
-                                        </button>
-
-                                        {installProgress[server.id] ? (
-                                            <div className="px-3 py-1.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 transition-colors text-xs font-bold flex items-center gap-2">
-                                                <Loader2 size={12} className="animate-spin" /> Installing...
-                                            </div>
-                                        ) : (
-                                            <div className="px-3 py-1.5 rounded bg-secondary border border-border group-hover:bg-foreground group-hover:text-background transition-colors text-xs font-medium flex items-center gap-2">
-                                                Connect <ArrowRight size={12} />
+                                    <div className="flex justify-end items-center gap-4">
+                                        {/* Diagnosis Alert - Discrete Classic Design */}
+                                        {server.status === 'CRASHED' && (
+                                            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-rose-500 text-white rounded text-[9px] font-bold uppercase tracking-tight shadow-sm whitespace-nowrap">
+                                                <AlertTriangle size={10} className="stroke-[3px]" />
+                                                <span>Analysis Required</span>
                                             </div>
                                         )}
+
+                                        <div className="flex items-center gap-3">
+                                            {/* Delete Button (Visible on Hover) */}
+                                            <button 
+                                                disabled={server.status === ServerStatus.ONLINE || server.status === ServerStatus.STARTING || !!installProgress[server.id] || server.status === ServerStatus.INSTALLING}
+                                                onClick={(e) => handleDelete(e, server.id, server.name)}
+                                                className={`p-2 rounded-md opacity-0 group-hover:opacity-100 transition-all ${
+                                                    (server.status === ServerStatus.ONLINE || server.status === ServerStatus.STARTING || !!installProgress[server.id] || server.status === ServerStatus.INSTALLING)
+                                                    ? 'text-muted-foreground/30 cursor-not-allowed'
+                                                    : 'text-muted-foreground hover:text-rose-500 hover:bg-rose-500/10'
+                                                }`}
+                                                title={ (server.status === ServerStatus.ONLINE || server.status === ServerStatus.STARTING) ? "Stop server to delete" : "Delete Instance"}
+                                            >
+                                                <Trash2 size={16} />
+                                            </button>
+
+                                            {installProgress[server.id] ? (
+                                                <div className="px-3 py-1.5 rounded bg-indigo-500/10 border border-indigo-500/20 text-indigo-500 transition-colors text-xs font-bold flex items-center gap-2">
+                                                    <Loader2 size={12} className="animate-spin" /> Installing...
+                                                </div>
+                                            ) : (
+                                                <div className="px-3 py-1.5 rounded bg-secondary border border-border group-hover:bg-foreground group-hover:text-background transition-colors text-xs font-medium flex items-center gap-2">
+                                                    Connect <ArrowRight size={12} />
+                                                </div>
+                                            )}
+                                        </div>
                                     </div>
                                 </div>
                             </div>

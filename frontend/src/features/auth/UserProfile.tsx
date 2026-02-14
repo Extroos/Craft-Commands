@@ -7,7 +7,7 @@ import { useToast } from '../ui/Toast';
 import { 
     User, Lock, Palette, Bell, Key, Eye, EyeOff, Save, Loader2, 
     Mail, Check, AlertTriangle, Code, RefreshCw, Copy, Gamepad2, Link,
-    Terminal, Monitor, BellRing, Type, Volume2, Disc
+    Terminal, Monitor, BellRing, Type, Volume2, Disc, Camera
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useUser } from '@features/auth/context/UserContext';
@@ -176,6 +176,30 @@ const UserProfileView: React.FC = () => {
     const [avatarInput, setAvatarInput] = useState(user?.avatarUrl || '');
     const [isSaving, setIsSaving] = useState(false);
     const [showBackgroundModal, setShowBackgroundModal] = useState(false);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+    const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+
+        if (file.size > 5 * 1024 * 1024) {
+            addToast('error', 'Too Large', 'Avatar must be smaller than 5MB.');
+            return;
+        }
+
+        setIsSaving(true);
+        try {
+            const result = await API.uploadAvatar(file);
+            await updateUser({ avatarUrl: result.url });
+            setAvatarInput(result.url);
+            addToast('success', 'Profile Updated', 'Your profile picture has been changed.');
+        } catch (err: any) {
+            addToast('error', 'Upload Failed', err.message || 'Could not upload avatar.');
+        } finally {
+            setIsSaving(false);
+            if (fileInputRef.current) fileInputRef.current.value = '';
+        }
+    };
 
     const handlePasswordChange = async () => {
         if (!passwords.current || !passwords.new || !passwords.confirm) {
@@ -271,25 +295,9 @@ const UserProfileView: React.FC = () => {
     const handlePreferenceUpdate = (category: keyof UserProfile['preferences'], key: string, value: any) => {
         // Quality Mode Boost: Initialize default backgrounds if first time
         if (key === 'visualQuality' && value === true) {
-            const hasBackgrounds = user?.preferences?.backgrounds && 
-                                  Object.values(user.preferences.backgrounds).some(b => b && b.url);
-            
-            if (!hasBackgrounds) {
-                const defaultBg = { enabled: true, url: '/uploads/backgrounds/default-Background.jpg', opacity: 0.4, blur: 4 };
-                updatePreferences({ 
-                    visualQuality: true,
-                    backgrounds: {
-                        login: defaultBg,
-                        serverSelection: defaultBg,
-                        dashboard: defaultBg,
-                        users: defaultBg,
-                        globalSettings: defaultBg,
-                        auditLog: defaultBg
-                    }
-                });
-                addToast('success', 'Quality Mode Enabled', 'Default background applied. Customize it any time!');
-                return;
-            }
+            updatePreferences({ visualQuality: true });
+            addToast('success', 'Quality Mode Enabled', 'Visual effects are now active!');
+            return;
         }
 
         if (category === 'notifications' || category === 'terminal' || category === 'updates') {
@@ -342,7 +350,32 @@ const UserProfileView: React.FC = () => {
                                 <User size={40} />
                             </div>
                         )}
+                        
+                        {/* Interactive overlay */}
+                        <button 
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isSaving}
+                            className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-all duration-300 text-white cursor-pointer backdrop-blur-[2px]"
+                            title="Upload new profile picture"
+                        >
+                            {isSaving ? (
+                                <Loader2 size={24} className="animate-spin" />
+                            ) : (
+                                <>
+                                    <Camera size={24} />
+                                    <span className="text-[8px] font-bold uppercase mt-1 tracking-widest text-white/80">Update</span>
+                                </>
+                            )}
+                        </button>
                     </div>
+                    
+                    <input 
+                        ref={fileInputRef}
+                        type="file"
+                        className="hidden"
+                        accept="image/*"
+                        onChange={handleFileUpload}
+                    />
                     {user.minecraftIgn && (
                         <div className={`absolute -bottom-2 left-1/2 -translate-x-1/2 text-foreground text-[10px] font-bold px-2 py-0.5 rounded-full border border-background shadow-sm whitespace-nowrap ${theme.bg}`}>
                             LINKED

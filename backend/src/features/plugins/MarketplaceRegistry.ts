@@ -1,9 +1,38 @@
 import axios from 'axios';
+import fs from 'fs-extra';
+import path from 'path';
 import { logger } from '../../utils/logger';
 import { PluginSearchQuery, PluginSearchResult, PluginPlatform, PluginSource, PluginUpdateInfo } from '@shared/types';
 
-const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
+const CACHE_DIR = path.join(process.cwd(), 'backups', '.cache');
+const CACHE_FILE = path.join(CACHE_DIR, 'plugin_search.json');
+const CACHE_TTL = 30 * 60 * 1000; // Increased to 30 minutes for persistent cache
 const searchCache = new Map<string, { data: PluginSearchResult, timestamp: number }>();
+
+// Load cache from disk
+try {
+    if (fs.existsSync(CACHE_FILE)) {
+        const data = fs.readJsonSync(CACHE_FILE);
+        Object.entries(data).forEach(([key, value]: [string, any]) => {
+            if (Date.now() - value.timestamp < CACHE_TTL) {
+                searchCache.set(key, value);
+            }
+        });
+        logger.info(`[MarketplaceRegistry] Loaded ${searchCache.size} search results from disk cache`);
+    }
+} catch (err: any) {
+    logger.warn(`[MarketplaceRegistry] Failed to load disk cache: ${err.message}`);
+}
+
+function saveCacheToDisk() {
+    try {
+        fs.ensureDirSync(CACHE_DIR);
+        const obj = Object.fromEntries(searchCache.entries());
+        fs.writeJsonSync(CACHE_FILE, obj);
+    } catch (err: any) {
+        logger.warn(`[MarketplaceRegistry] Failed to save disk cache: ${err.message}`);
+    }
+}
 
 function getCacheKey(query: PluginSearchQuery, source: string): string {
     return `${source}:${query.query}:${query.category || ''}:${query.platform || ''}:${query.gameVersion || ''}:${query.page || 0}:${query.sort || 'downloads'}`;
@@ -20,6 +49,7 @@ function getCached(key: string): PluginSearchResult | null {
 
 function setCache(key: string, data: PluginSearchResult) {
     searchCache.set(key, { data, timestamp: Date.now() });
+    saveCacheToDisk();
 }
 
 // --- Platform Mapping ---
@@ -128,12 +158,16 @@ async function searchModrinth(query: PluginSearchQuery, software: string): Promi
 
 // --- Modrinth Download URL Resolution ---
 export async function getModrinthDownloadUrl(projectId: string, gameVersion?: string) {
-    const response = await axios.get(`https://api.modrinth.com/v2/project/${projectId}/version`, {
-        headers: { 'User-Agent': 'CraftCommand/1.8.0 (contact@craftcommand.io)' },
-        timeout: 10000,
-    });
+    const headers = { 'User-Agent': 'CraftCommand/1.8.0 (contact@craftcommand.io)' };
+    
+    // Parallel fetch project and versions
+    const [projectRes, versionsRes] = await Promise.all([
+        axios.get(`https://api.modrinth.com/v2/project/${projectId}`, { headers, timeout: 10000 }),
+        axios.get(`https://api.modrinth.com/v2/project/${projectId}/version`, { headers, timeout: 10000 })
+    ]);
 
-    let versions = response.data;
+    const project = projectRes.data as any;
+    let versions = versionsRes.data;
 
     // Filter by game version if specified
     if (gameVersion) {
@@ -152,6 +186,12 @@ export async function getModrinthDownloadUrl(projectId: string, gameVersion?: st
         url: (primaryFile as any).url,
         fileName: (primaryFile as any).filename,
         version: (latest as any).version_number,
+        // Metadata fields
+        description: project.description,
+        author: project.author || 'Unknown',
+        iconUrl: project.icon_url,
+        category: project.categories?.[0] || 'General',
+        externalUrl: `https://modrinth.com/plugin/${project.slug}`
     };
 }
 
@@ -167,14 +207,29 @@ async function searchSpiget(query: PluginSearchQuery): Promise<PluginSearchResul
         'rating': '-rating.average',
     };
 
-    const response = await axios.get(`https://api.spiget.org/v2/search/resources/${encodeURIComponent(query.query || '')}`, {
-        params: {
-            size: limit,
-            page,
-            sort: sortMap[query.sort || 'downloads'] || '-downloads',
-        },
-        timeout: 10000,
-    });
+    const isSearch = !!query.query?.trim();
+    const endpoint = isSearch 
+        ? `https://api.spiget.org/v2/search/resources/${encodeURIComponent(query.query || '')}`
+        : `https://api.spiget.org/v2/resources`;
+
+    let response;
+    try {
+        response = await axios.get(endpoint, {
+            params: {
+                size: limit,
+                page,
+                sort: sortMap[query.sort || 'downloads'] || '-downloads',
+            },
+            timeout: 10000,
+        });
+    } catch (err: any) {
+        if (err.response?.status === 404) {
+            // Spiget returns 404 for search queries it can't handle (e.g. including slashes or dots)
+            // We return empty results instead of letting the error bubble up.
+            return { plugins: [], total: 0, page, pages: 0 };
+        }
+        throw err; // Re-throw other errors (500, timeout, etc.)
+    }
 
     const data = response.data;
     const plugins = (Array.isArray(data) ? data : []).map((resource: any) => ({
@@ -214,6 +269,12 @@ export async function getSpigetDownloadUrl(resourceId: string) {
         url: `https://api.spiget.org/v2/resources/${resourceId}/download`,
         fileName: `${name.replace(/[^a-zA-Z0-9.-]/g, '_')}-${version}.jar`,
         version,
+        // Metadata
+        description: resource.tag || '',
+        author: resource.author?.name || 'Unknown',
+        iconUrl: resource.icon?.url ? `https://www.spigotmc.org/${resource.icon.url}` : undefined,
+        category: resource.category?.name || 'General',
+        externalUrl: `https://www.spigotmc.org/resources/${resourceId}/`
     };
 }
 
@@ -276,12 +337,14 @@ export async function getHangarDownloadUrl(slug: string, gameVersion?: string) {
     const params: any = { limit: 1, offset: 0 };
     if (gameVersion) params.version = gameVersion;
 
-    const versionsRes = await axios.get(`https://hangar.papermc.io/api/v1/projects/${slug}/versions`, {
-        params,
-        timeout: 10000,
-    });
+    const [projectRes, versionsRes] = await Promise.all([
+        axios.get(`https://hangar.papermc.io/api/v1/projects/${slug}`, { timeout: 10000 }),
+        axios.get(`https://hangar.papermc.io/api/v1/projects/${slug}/versions`, { params, timeout: 10000 })
+    ]);
 
+    const project = projectRes.data as any;
     const versions = (versionsRes.data as any).result;
+
     if (!versions?.length) throw new Error(`No versions found for this plugin${gameVersion ? ' matching ' + gameVersion : ''}`);
 
     const latest = versions[0];
@@ -292,6 +355,12 @@ export async function getHangarDownloadUrl(slug: string, gameVersion?: string) {
         url: `https://hangar.papermc.io/api/v1/projects/${slug}/versions/${versionName}/${platform}/download`,
         fileName: `${slug}-${versionName}.jar`,
         version: versionName,
+        // Metadata
+        description: project.description || '',
+        author: project.namespace?.owner || 'Unknown',
+        iconUrl: project.avatarUrl,
+        category: project.category || 'General',
+        externalUrl: `https://hangar.papermc.io/${project.namespace?.owner}/${project.namespace?.slug}`
     };
 }
 

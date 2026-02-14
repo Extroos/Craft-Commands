@@ -7,6 +7,7 @@ import { discordService } from '../integrations/DiscordService';
 import { auditService } from './AuditService';
 import { verifyToken, requireRole, requirePermission } from '../../middleware/authMiddleware';
 import { installerService } from '../installer/InstallerService';
+import { autoHealingService } from '../servers/AutoHealingService';
 
 const router = express.Router();
 
@@ -15,6 +16,24 @@ router.get('/stats', async (req, res) => {
     console.log('[SystemRoute] GET /stats');
     const stats = await getSystemStats();
     res.json(stats);
+});
+
+// Real-time Health Telemetry (AutoHealing v3)
+router.get('/health', verifyToken, async (req, res) => {
+    try {
+        const stats = await getSystemStats(); // Basic stats
+        const hostHealth = await autoHealingService.checkHostHealth(); // Detailed IO/Sentinel stats
+        const stabilityMarkers = autoHealingService.getAllStabilityMarkers();
+        
+        res.json({
+            ...hostHealth,
+            stabilityMarkers,
+            uptime: process.uptime(),
+            timestamp: Date.now()
+        });
+    } catch (e: any) {
+        res.status(500).json({ error: e.message });
+    }
 });
 
 import { systemService } from './SystemService';

@@ -21,6 +21,7 @@ type UserContextType = {
     updatePreferences: (prefs: Partial<UserProfile['preferences']>) => void;
     updateUser: (updates: Partial<UserProfile>) => Promise<void>;
     refreshUser: () => Promise<void>;
+    guestPrefs: { reducedMotion: boolean; visualQuality: boolean };
 };
 
 import { socketService } from '../../core/services/socket';
@@ -39,6 +40,12 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
     const [user, setUser] = useState<UserProfile | null>(null);
     const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
     const [isLoading, setIsLoading] = useState<boolean>(true);
+
+    // Guest Preference State (Pre-authentication)
+    const [guestPrefs, setGuestPrefs] = useState({
+        reducedMotion: localStorage.getItem('cc_reducedMotion') === 'true',
+        visualQuality: localStorage.getItem('cc_visualQuality') !== 'false' // Default to true
+    });
 
     // Initial Load / Token Verification
     useEffect(() => {
@@ -127,6 +134,16 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         API.updateUser({ preferences: updated }, token!).catch(e => {
             console.error("Failed to save pref:", e);
         });
+
+        // Update local guest cache as well for logout persistence
+        if (newPrefs.reducedMotion !== undefined) {
+            localStorage.setItem('cc_reducedMotion', String(newPrefs.reducedMotion));
+            setGuestPrefs(prev => ({ ...prev, reducedMotion: newPrefs.reducedMotion! }));
+        }
+        if (newPrefs.visualQuality !== undefined) {
+            localStorage.setItem('cc_visualQuality', String(newPrefs.visualQuality));
+            setGuestPrefs(prev => ({ ...prev, visualQuality: newPrefs.visualQuality! }));
+        }
     };
 
     const updateUser = async (updates: Partial<UserProfile>) => {
@@ -172,21 +189,23 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
 
     // Reduced Motion
     useEffect(() => {
-        if (user?.preferences.reducedMotion) {
+        const enabled = user ? user.preferences.reducedMotion : guestPrefs.reducedMotion;
+        if (enabled) {
             document.body.classList.add('reduce-motion');
         } else {
             document.body.classList.remove('reduce-motion');
         }
-    }, [user?.preferences?.reducedMotion]);
+    }, [user?.preferences?.reducedMotion, guestPrefs.reducedMotion]);
     
     // Quality Mode
     useEffect(() => {
-        if (user?.preferences.visualQuality) {
+        const enabled = user ? user.preferences.visualQuality : guestPrefs.visualQuality;
+        if (enabled) {
             document.body.classList.add('visual-quality-high');
         } else {
             document.body.classList.remove('visual-quality-high');
         }
-    }, [user?.preferences?.visualQuality]);
+    }, [user?.preferences?.visualQuality, guestPrefs.visualQuality]);
 
     // Persistence: Cache backgrounds for pre-login experience
     useEffect(() => {
@@ -205,7 +224,8 @@ export const UserProvider: React.FC<{ children: ReactNode }> = ({ children }) =>
         logout,
         updatePreferences,
         updateUser,
-        refreshUser
+        refreshUser,
+        guestPrefs
     };
 
     return (

@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Share2, Power, RotateCcw, Ban, Activity, Cpu, Network, Users, Copy, Check, Disc, Clock, Terminal, AlertTriangle, Info, X, Download, Zap, Globe } from 'lucide-react';
-import { ServerStatus, ServerConfig, TabView } from '@shared/types';
+import { ServerStatus, ServerConfig, TabView, DiagnosisResult } from '@shared/types';
 
 import { API } from '@core/services/api';
 import { socketService } from '@core/services/socket';
@@ -152,7 +152,7 @@ const Dashboard: React.FC<DashboardProps> = ({ serverId }) => {
     };
 
     // Diagnosis State
-    const [diagnosisResult, setDiagnosisResult] = useState<any>(null);
+    const [diagnosisResults, setDiagnosisResults] = useState<DiagnosisResult[]>([]);
 
     // Java Download Status - only consider active download phases
     const isJavaDownloading = javaDownloadStatus && 
@@ -160,32 +160,27 @@ const Dashboard: React.FC<DashboardProps> = ({ serverId }) => {
          javaDownloadStatus.phase === 'extracting' || 
          javaDownloadStatus.phase === 'installing');
 
-    // Auto-Diagnosis Trigger
     useEffect(() => {
-        if (server?.status === 'CRASHED' || (server?.status === 'OFFLINE' && !diagnosisResult)) {
+        if (server?.status === 'CRASHED' || (server?.status === 'OFFLINE' && diagnosisResults.length === 0)) {
             // Check if we should diagnose (e.g. if it just crashed)
             // For now, we'll run it once if we see CRASHED
             if (server.status === 'CRASHED') {
                 runDiagnosis();
             }
-        } else if (server?.status === 'ONLINE' || server?.status === 'STARTING') {
-            setDiagnosisResult(null); // Clear on start
+        } else if (server?.status === ServerStatus.ONLINE || server?.status === ServerStatus.STARTING) {
+            setDiagnosisResults([]); // Clear on start
         }
     }, [server?.status]);
 
     const runDiagnosis = async () => {
         try {
             const results = await API.runDiagnosis(serverId);
-            // API returns array, take first result or null
-            const result = Array.isArray(results) && results.length > 0 ? results[0] : null;
-
-            if (result) {
+            if (Array.isArray(results) && results.length > 0) {
                 const ignored = JSON.parse(localStorage.getItem(`ignored_diagnoses_${serverId}`) || '[]');
-                if (!ignored.includes(result.ruleId)) {
-                    setDiagnosisResult(result);
-                }
+                const visible = results.filter(r => !ignored.includes(r.ruleId));
+                setDiagnosisResults(visible);
             } else {
-                setDiagnosisResult(null);
+                setDiagnosisResults([]);
             }
         } catch (e) {
             console.error('Diagnosis failed:', e);
@@ -290,7 +285,7 @@ const Dashboard: React.FC<DashboardProps> = ({ serverId }) => {
         if (action === 'start') {
             try {
                 await API.startServer(serverId);
-                setDiagnosisResult(null); // Clear any old errors on success
+                setDiagnosisResults([]); // Clear any old errors on success
             } catch (e: any) {
                 // UNIFIED ERROR REPORTING
                 // Instead of a separate safety error modal, we run diagnosis
@@ -321,7 +316,7 @@ const Dashboard: React.FC<DashboardProps> = ({ serverId }) => {
     const handleForceStart = async () => {
         try {
             await API.startServer(serverId, true); // Force = true
-            setDiagnosisResult(null);
+            setDiagnosisResults([]);
         } catch (e: any) {
             addToast('error', 'Force Start Failed', e.message);
         }
@@ -331,7 +326,7 @@ const Dashboard: React.FC<DashboardProps> = ({ serverId }) => {
         try {
              await API.saveFileContent(serverId, 'eula.txt', 'eula=true');
              addToast('success', 'EULA Accepted', 'You can now start the server.');
-             setDiagnosisResult(null); 
+             setDiagnosisResults([]); 
         } catch (e: any) {
              addToast('error', 'Failed to accept EULA', e.message);
         }
@@ -456,23 +451,26 @@ const Dashboard: React.FC<DashboardProps> = ({ serverId }) => {
 
 
 
-            {/* --- SMART ANALYSIS HINTS (Legacy) --- */}
-            <DiagnosisCard 
-                result={diagnosisResult} 
-                serverId={serverId} 
-                onFix={runDiagnosis} // Re-run after fix
-                onDismiss={() => {
-                    if (diagnosisResult?.ruleId) {
-                        const ignored = JSON.parse(localStorage.getItem(`ignored_diagnoses_${serverId}`) || '[]');
-                        if (!ignored.includes(diagnosisResult.ruleId)) {
-                             ignored.push(diagnosisResult.ruleId);
-                             localStorage.setItem(`ignored_diagnoses_${serverId}`, JSON.stringify(ignored));
+            {/* --- SMART ANALYSIS HINTS (Intelligence Overhaul) --- */}
+            {diagnosisResults.map((result, idx) => (
+                <DiagnosisCard 
+                    key={result.id || idx}
+                    result={result} 
+                    serverId={serverId} 
+                    onFix={runDiagnosis} // Re-run after fix
+                    onDismiss={() => {
+                        if (result.ruleId) {
+                            const ignored = JSON.parse(localStorage.getItem(`ignored_diagnoses_${serverId}`) || '[]');
+                            if (!ignored.includes(result.ruleId)) {
+                                 ignored.push(result.ruleId);
+                                 localStorage.setItem(`ignored_diagnoses_${serverId}`, JSON.stringify(ignored));
+                            }
                         }
-                    }
-                    setDiagnosisResult(null);
-                }}
-                onViewCrash={() => handleExplainCrash()}
-            />
+                        setDiagnosisResults(prev => prev.filter(r => r.ruleId !== result.ruleId));
+                    }}
+                    onViewCrash={() => handleExplainCrash()}
+                />
+            ))}
 
             {/* --- SMART ANALYSIS HINTS --- */}
             <AnimatePresence>

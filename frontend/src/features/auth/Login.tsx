@@ -14,10 +14,14 @@ interface LoginProps {
 
 const Login: React.FC<LoginProps> = ({ onLogin, onViewStatus }) => {
     const [isLoading, setIsLoading] = useState(false);
+    const [isHolding, setIsHolding] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
-    const { login } = useUser();
+    const { login, user, guestPrefs, theme } = useUser();
     const { addToast } = useToast();
+
+    const isQuality = user ? user.preferences.visualQuality : guestPrefs.visualQuality;
+    const isReducedMotion = user ? user.preferences.reducedMotion : guestPrefs.reducedMotion;
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -39,11 +43,12 @@ const Login: React.FC<LoginProps> = ({ onLogin, onViewStatus }) => {
     };
 
     return (
-        <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden p-6 font-sans bg-[#09090b]">
+        <div className={`min-h-screen flex flex-col items-center justify-center relative overflow-hidden p-6 font-sans transition-colors duration-700 ${isQuality ? 'bg-zinc-950/40' : 'bg-[#09090b]'}`}>
             
-            {/* Minimalist Background Particles/Soft Glow */}
-            <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-white/[0.02] rounded-full blur-[120px] pointer-events-none"></div>
-            <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-white/[0.01] rounded-full blur-[120px] pointer-events-none"></div>
+            {/* Minimalist Accents - Matching ServerSelection's subtle look */}
+            <div className={`absolute top-0 left-0 w-full h-full bg-zinc-950/20 pointer-events-none ${isQuality ? 'block' : 'hidden'}`}></div>
+            
+            <div className={`absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-4xl h-[1px] bg-gradient-to-r from-transparent via-white/5 to-transparent pointer-events-none`} />
             
             <motion.div 
                 initial="hidden"
@@ -65,48 +70,37 @@ const Login: React.FC<LoginProps> = ({ onLogin, onViewStatus }) => {
                         hidden: { opacity: 0, scale: 0.98 },
                         visible: { opacity: 1, scale: 1, transition: { duration: 0.6, ease: [0.16, 1, 0.3, 1] } }
                     }}
-                    className="flex flex-col items-center justify-center text-center space-y-4 group/header"
+                    className="flex flex-col items-center justify-center text-center space-y-4 group/header cursor-crosshair select-none"
+                    onMouseDown={() => setIsHolding(true)}
+                    onMouseUp={() => setIsHolding(false)}
+                    onMouseLeave={() => setIsHolding(false)}
+                    onTouchStart={() => setIsHolding(true)}
+                    onTouchEnd={() => setIsHolding(false)}
                 >
-                    <img 
-                        src="/website-icon.png" 
-                        alt="CraftCommand" 
-                        className="w-24 h-24 object-contain" 
-                    />
-                    <div className="space-y-1">
-                        <h1 className="text-2xl font-bold text-white tracking-tight cursor-default flex justify-center overflow-hidden">
-                            {"CraftCommand".split("").map((char, i) => (
-                                <motion.span
-                                    key={i}
-                                    variants={{
-                                        hidden: { opacity: 0, y: 20 },
-                                        visible: { 
-                                            opacity: 1, 
-                                            y: 0, 
-                                            transition: { 
-                                                duration: 0.8, 
-                                                ease: [0.16, 1, 0.3, 1],
-                                                delay: i * 0.04 
-                                            } 
-                                        }
-                                    }}
-                                    whileHover={{ 
-                                        color: ["#ffffff", "#6366f1", "#a855f7", "#ec4899", "#f59e0b", "#10b981", "#ffffff"],
-                                    }}
-                                    whileTap={{ 
-                                        color: ["#ffffff", "#6366f1", "#a855f7", "#ec4899", "#f59e0b", "#10b981", "#ffffff"],
-                                        scale: 1.1
-                                    }}
-                                    transition={{ 
-                                        duration: 2, 
-                                        repeat: Infinity,
-                                        delay: i * 0.05
-                                    }}
-                                >
-                                    {char}
-                                </motion.span>
-                            ))}
-                        </h1>
-                        <p className="text-[10px] uppercase tracking-[0.3em] text-[#a1a1aa] font-medium">Enterprise Management Suite</p>
+                    <div className="relative">
+                        <img 
+                            src="/website-icon.png" 
+                            alt="CraftCommand" 
+                            className="w-24 h-24 object-contain transition-all duration-300" 
+                        />
+                    </div>
+                    <div className="space-y-1 relative">
+                        <div className="relative inline-block">
+                            <h1 className={`text-2xl font-bold tracking-tight text-white transition-all duration-150 ${isHolding ? 'scale-[0.98] brightness-125' : ''}`}>
+                                CraftCommand
+                            </h1>
+                            {isHolding && (
+                                <>
+                                    <div className="absolute inset-0 text-2xl font-bold tracking-tight text-emerald-500 opacity-70 animate-glitch-1 mix-blend-screen overflow-hidden">
+                                        CraftCommand
+                                    </div>
+                                    <div className="absolute inset-0 text-2xl font-bold tracking-tight text-blue-500 opacity-70 animate-glitch-2 mix-blend-screen overflow-hidden">
+                                        CraftCommand
+                                    </div>
+                                </>
+                            )}
+                        </div>
+                        <p className="text-[#a1a1aa] text-sm font-medium">Identify yourself to access the suite.</p>
                     </div>
                 </motion.div>
 
@@ -116,7 +110,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onViewStatus }) => {
                         hidden: { opacity: 0, y: 15 },
                         visible: { opacity: 1, y: 0, transition: { duration: 0.7, ease: [0.16, 1, 0.3, 1] } }
                     }}
-                    className="bg-[#111111] border border-white/[0.08] rounded-2xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] p-8 relative overflow-hidden"
+                    className={`${isQuality ? 'glass-morphism quality-shadow' : 'bg-[#111111]'} border border-white/[0.08] rounded-2xl shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] p-8 relative overflow-hidden`}
                 >
                     <form onSubmit={handleSubmit} className="space-y-6 relative z-10">
                         <div className="space-y-1.5">
@@ -127,7 +121,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onViewStatus }) => {
                                     required
                                     value={email}
                                     onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full bg-[#18181b] border border-white/[0.05] rounded-xl py-3 px-4 text-sm text-white placeholder:text-[#52525b] focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/10 transition-all duration-300"
+                                    className={`w-full bg-[#18181b] border border-white/[0.05] rounded-xl py-3 px-4 text-sm text-white placeholder:text-[#52525b] focus:outline-none focus:border-white/20 focus:ring-1 ${theme.ring} transition-all duration-300`}
                                     placeholder="user@localhost"
                                 />
                             </div>
@@ -143,7 +137,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onViewStatus }) => {
                                     required
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full bg-[#18181b] border border-white/[0.05] rounded-xl py-3 px-4 text-sm text-white placeholder:text-[#52525b] focus:outline-none focus:border-white/20 focus:ring-1 focus:ring-white/10 transition-all duration-300"
+                                    className={`w-full bg-[#18181b] border border-white/[0.05] rounded-xl py-3 px-4 text-sm text-white placeholder:text-[#52525b] focus:outline-none focus:border-white/20 focus:ring-1 ${theme.ring} transition-all duration-300`}
                                     placeholder="••••••••"
                                 />
                             </div>
@@ -152,7 +146,7 @@ const Login: React.FC<LoginProps> = ({ onLogin, onViewStatus }) => {
                         <button 
                             type="submit" 
                             disabled={isLoading}
-                            className="w-full bg-white text-black font-bold uppercase text-[11px] tracking-[0.2em] py-4 rounded-xl hover:bg-[#e4e4e7] active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 mt-4 shadow-xl shadow-black/40 disabled:opacity-50"
+                            className={`w-full bg-foreground text-background font-bold uppercase text-[11px] tracking-[0.2em] py-4 rounded-xl hover:bg-foreground/90 active:scale-[0.98] transition-all duration-300 flex items-center justify-center gap-2 mt-4 shadow-xl shadow-black/40 disabled:opacity-50`}
                         >
                             {isLoading ? (
                                 <Loader2 className="animate-spin h-4 w-4" />
@@ -189,6 +183,34 @@ const Login: React.FC<LoginProps> = ({ onLogin, onViewStatus }) => {
                     </div>
                 </motion.div>
             </motion.div>
+
+            <style>{`
+                @keyframes glitch-1 {
+                    0% { transform: translate(0); }
+                    20% { transform: translate(-2px, 2px); clip-path: inset(10% 0 30% 0); }
+                    40% { transform: translate(-2px, -2px); clip-path: inset(40% 0 10% 0); }
+                    60% { transform: translate(2px, 2px); clip-path: inset(80% 0 5% 0); }
+                    80% { transform: translate(2px, -2px); clip-path: inset(0% 0 70% 0); }
+                    100% { transform: translate(0); }
+                }
+
+                @keyframes glitch-2 {
+                    0% { transform: translate(0); }
+                    20% { transform: translate(2px, -2px); clip-path: inset(20% 0 40% 0); }
+                    40% { transform: translate(2px, 2px); clip-path: inset(10% 0 60% 0); }
+                    60% { transform: translate(-2px, -2px); clip-path: inset(50% 0 20% 0); }
+                    80% { transform: translate(-2px, 2px); clip-path: inset(30% 0 20% 0); }
+                    100% { transform: translate(0); }
+                }
+
+                .animate-glitch-1 {
+                    animation: glitch-1 0.2s infinite linear alternate-reverse;
+                }
+
+                .animate-glitch-2 {
+                    animation: glitch-2 0.3s infinite linear alternate-reverse;
+                }
+            `}</style>
         </div>
     );
 };

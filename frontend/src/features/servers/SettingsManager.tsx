@@ -10,6 +10,7 @@ import { useToast } from '../ui/Toast';
 import { useServers } from '@features/servers/context/ServerContext';
 import { useUser } from '@features/auth/context/UserContext';
 import { getServerCapabilities } from '@shared/utils/CapabilityUtils';
+import { NetworkSettings } from '../system/NetworkSettings';
 
 import { SecurityConfig } from '@shared/types';
 
@@ -125,7 +126,7 @@ interface SettingsManagerProps {
 }
 
 const SettingsManager: React.FC<SettingsManagerProps> = ({ serverId }) => {
-    const [activeTab, setActiveTab] = useState<'GENERAL' | 'SECURITY' | 'ADVANCED'>('GENERAL');
+    const [activeTab, setActiveTab] = useState<'GENERAL' | 'SECURITY' | 'ADVANCED' | 'NETWORKING'>('GENERAL');
     const [isDirty, setIsDirty] = useState(false);
     const [isSaving, setIsSaving] = useState(false);
     const [errors, setErrors] = useState<Record<string, string>>({});
@@ -393,12 +394,14 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({ serverId }) => {
         }
 
         setIsUploadingIcon(true);
+        const optimizationToast = addToast('info', 'Stabilizing Icon', 'Optimizing photo for Minecraft compatibility...');
+        
         try {
             await API.uploadServerIcon(serverId, file);
-            addToast('success', 'Icon Updated', 'Server icon was successfully changed.');
+            addToast('success', 'Icon Optimized', 'Your server icon was successfully stabilized and updated.');
             refreshServers(); // Reload to update iconUrl if stored, or just refresh context
         } catch (err: any) {
-            addToast('error', 'Upload Failed', err.message || 'Failed to upload icon');
+            addToast('error', 'Optimization Failed', err.message || 'Failed to process icon');
         } finally {
             setIsUploadingIcon(false);
             if (iconInputRef.current) iconInputRef.current.value = '';
@@ -571,7 +574,7 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({ serverId }) => {
         }
     };
 
-    type TabType = 'GENERAL' | 'SECURITY' | 'ADVANCED';
+    type TabType = 'GENERAL' | 'SECURITY' | 'ADVANCED' | 'NETWORKING';
 
     return (
         <motion.div 
@@ -591,7 +594,7 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({ serverId }) => {
 
                 <div className="px-4 py-3 flex flex-col md:flex-row items-center justify-between gap-4">
                     <nav className="flex items-center gap-1 bg-muted/10 p-0.5 rounded-md border border-border/40">
-                        {(['GENERAL', 'SECURITY', 'ADVANCED'] as TabType[]).map((tab) => (
+                        {(['GENERAL', 'SECURITY', 'ADVANCED', 'NETWORKING'] as TabType[]).map((tab) => (
                             <button
                                 key={tab}
                                 onClick={() => setActiveTab(tab)}
@@ -601,7 +604,7 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({ serverId }) => {
                                     : 'text-muted-foreground/60 hover:text-foreground/80 hover:bg-muted/30'
                                 }`}
                             >
-                                {tab.charAt(0) + tab.slice(1).toLowerCase()}
+                                {tab === 'NETWORKING' ? 'Networking' : tab.charAt(0) + tab.slice(1).toLowerCase()}
                             </button>
                         ))}
                     </nav>
@@ -1393,7 +1396,7 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({ serverId }) => {
                                 <div className="p-1.5 rounded-md bg-muted/40 border border-border shadow-inner group-hover:bg-muted/60 transition-colors">
                                     <Play size={14} className="text-primary/70" />
                                 </div>
-                                <div>
+                                <div className="flex-1">
                                     <h3 className="text-xs font-bold text-foreground/90">Process Lifecycle</h3>
                                     <p className="text-[10px] text-muted-foreground font-medium opacity-70">Startup & Termination Stack</p>
                                 </div>
@@ -1683,6 +1686,12 @@ const SettingsManager: React.FC<SettingsManagerProps> = ({ serverId }) => {
                         </AnimatePresence>
                     </div>
                     </>
+                )}
+
+                {activeTab === 'NETWORKING' && (
+                    <div className="space-y-4 xl:col-span-3">
+                        <NetworkSettings serverId={serverId} />
+                    </div>
                 )}
             </div>
         </motion.div>

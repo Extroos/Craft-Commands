@@ -49,10 +49,13 @@ const PresenceBar: React.FC<{ serverId?: string }> = ({ serverId }) => {
                     >
                         {/* Avatar circle */}
                         <div
-                            className={`w-6 h-6 rounded-full border-2 border-background flex items-center justify-center text-[9px] font-bold text-white ${ROLE_COLORS[entry.role]} transition-transform hover:scale-110 cursor-default`}
-                            title={`${entry.username} (${entry.role})`}
+                            className={`w-6 h-6 rounded-full border-2 border-background flex items-center justify-center text-[9px] font-bold text-white ${ROLE_COLORS[entry.role]} transition-transform hover:scale-110 cursor-default overflow-hidden relative shadow-sm`}
                         >
-                            {entry.username.charAt(0).toUpperCase()}
+                            {entry.avatar ? (
+                                <img src={entry.avatar} alt={entry.username} className="w-full h-full object-cover" />
+                            ) : (
+                                entry.username.charAt(0).toUpperCase()
+                            )}
                         </div>
 
                         {/* Active view indicator */}
@@ -63,11 +66,21 @@ const PresenceBar: React.FC<{ serverId?: string }> = ({ serverId }) => {
                         </div>
 
                         {/* Tooltip */}
-                        <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-popover text-popover-foreground text-[10px] rounded-md shadow-xl border border-border opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity whitespace-nowrap z-50">
-                            <div className="font-semibold">{entry.username}</div>
-                            <div className="text-muted-foreground flex items-center gap-1">
-                                <span className={`w-1.5 h-1.5 rounded-full ${ROLE_COLORS[entry.role]}`}></span>
-                                {entry.role} · {entry.activeView}
+                        <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2.5 py-1.5 bg-popover text-popover-foreground text-[10px] rounded-lg shadow-2xl border border-border opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 translate-y-2 group-hover:translate-y-0 whitespace-nowrap z-[100] min-w-[100px]">
+                            {/* Arrow */}
+                            <div className="absolute -top-1 left-1/2 -translate-x-1/2 w-2 h-2 bg-popover border-t border-l border-border rotate-45" />
+                            
+                            <div className="relative">
+                                <div className="font-bold flex items-center justify-between gap-2">
+                                    {entry.username}
+                                    <span className="text-[8px] opacity-70 bg-secondary px-1 rounded uppercase tracking-tighter">{entry.role}</span>
+                                </div>
+                                <div className="text-muted-foreground flex items-center gap-1.5 mt-0.5">
+                                    <div className="bg-primary/20 p-0.5 rounded">
+                                        {VIEW_ICONS[entry.activeView] || <Eye size={8} />}
+                                    </div>
+                                    <span className="capitalize">{entry.activeView}</span>
+                                </div>
                             </div>
                         </div>
                     </div>

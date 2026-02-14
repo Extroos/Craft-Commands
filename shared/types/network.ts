@@ -1,0 +1,40 @@
+
+export type DdnsProvider = 'duckdns' | 'no-ip' | 'dynu' | 'custom';
+
+export interface PublicIpStatus {
+    current: string | null;
+    lastKnown: string | null;
+    lastChangedAt: number | null;
+    history: { ip: string; timestamp: number }[];
+}
+
+export interface DdnsStatus {
+    hostname: string | null;
+    resolvedIp: string | null;
+    isMatching: boolean;
+    lastVerifiedAt: number | null;
+    error?: string;
+    errorType?: 'AUTH' | 'NOT_FOUND' | 'PROPAGATION' | 'DNS_ERROR' | 'REFUSED' | 'TIMEOUT';
+}
+
+export interface PortReachability {
+    port: number;
+    status: 'open' | 'closed' | 'filtered' | 'unknown';
+    lastCheckedAt: number;
+}
+
+export interface NetworkState {
+    publicIp: PublicIpStatus;
+    ddns: DdnsStatus;
+    serverDdns: Record<string, DdnsStatus>;
+    reachability: PortReachability[];
+}
+
+export interface NetworkConfig {
+    hostname?: string;
+    provider?: DdnsProvider;
+    token?: string; // e.g. DuckDNS token
+    updateEnabled: boolean;
+    monitoringEnabled: boolean;
+    updateInterval: number; // minutes
+}

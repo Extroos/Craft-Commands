@@ -1,6 +1,6 @@
 {
   "name": "craftcommand-backend",
-  "version": "1.10.0",
+  "version": "1.10.1",
   "license": "AGPL-3.0-only",
   "author": "Extroos",
   "description": "Backend service for CraftCommand",
@@ -33,6 +33,7 @@
     "minecraft-server-util": "^5.4.4",
     "multer": "^2.0.2",
     "selfsigned": "^2.4.1",
+    "sharp": "^0.34.5",
     "socket.io": "^4.7.4",
     "systeminformation": "^5.21.22"
   },
@@ -45,6 +46,7 @@
     "@types/jsonwebtoken": "^9.0.10",
     "@types/multer": "^2.0.0",
     "@types/node": "^20.11.17",
+    "@types/sharp": "^0.31.1",
     "nodemon": "^3.0.3",
     "ts-node": "^10.9.2",
     "typescript": "^5.3.3"

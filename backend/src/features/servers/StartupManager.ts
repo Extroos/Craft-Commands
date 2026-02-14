@@ -1,4 +1,4 @@
-
+import { logger } from '../../utils/logger';
 import path from 'path';
 import fs from 'fs-extra';
 import { processManager } from '../processes/ProcessManager';
@@ -13,6 +13,7 @@ const execAsync = util.promisify(exec);
 import { safetyService, SafetyError } from '../system/SafetyService';
 import { systemSettingsService } from '../system/SystemSettingsService';
 import { NetUtils } from '../../utils/NetUtils';
+import { WEB_ROOT } from '../../constants';
 
 export class StartupManager {
 
@@ -143,6 +144,24 @@ export class StartupManager {
              } else {
                  console.warn(`[StartupManager] user_jvm_args.txt missing for Forge/Bat server. This might cause startup failure.`);
              }
+        }
+
+        // 3. Automated Icon Deployment (Branding Stabilization)
+        try {
+            const iconName = server.software === 'Bedrock' ? 'world_icon.png' : 'server-icon.png';
+            const serverIconPath = path.join(cwd, iconName);
+            const defaultIconPath = path.join(WEB_ROOT, 'server-icon.png');
+
+            if (!(await fs.pathExists(serverIconPath))) {
+                if (await fs.pathExists(defaultIconPath)) {
+                    logger.info(`[StartupManager:${id}] Deploying default branding icon...`);
+                    await fs.copy(defaultIconPath, serverIconPath);
+                } else {
+                    logger.warn(`[StartupManager:${id}] Default icon not found at ${defaultIconPath}. Skipping deployment.`);
+                }
+            }
+        } catch (err) {
+            logger.error(`[StartupManager:${id}] Failed to deploy server icon: ${err instanceof Error ? err.message : String(err)}`);
         }
     }
 

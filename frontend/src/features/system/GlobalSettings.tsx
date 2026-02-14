@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { GlobalSettings as GlobalSettingsType, SecurityConfig, DiscordConfig } from '@shared/types';
 import { API } from '@core/services/api';
 import { useToast } from '../ui/Toast';
-import { Save, AlertTriangle, Monitor, Shield, Settings2, Database, Layers, Check, RefreshCw, Webhook } from 'lucide-react';
+import { Save, AlertTriangle, Monitor, Shield, Settings2, Database, Layers, Check, RefreshCw, Webhook, Zap } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { STAGGER_CONTAINER, STAGGER_ITEM, INTERACTION_VARIANTS } from '../../styles/motion';
 import { useUser } from '@features/auth/context/UserContext';
@@ -12,7 +12,7 @@ import { RemoteAccessWizard } from '../ui/RemoteAccessWizard';
 import { useSystem } from '@features/system/context/SystemContext';
 import NodesManager from '@features/nodes/NodesManager';
 import { SelfHealingAudit } from './SelfHealingAudit';
-import { Activity } from 'lucide-react';
+import { Activity, Globe } from 'lucide-react';
 
 const GlobalSettingsView: React.FC = () => {
     const [settings, setSettings] = useState<GlobalSettingsType | null>(null);
@@ -261,25 +261,29 @@ const GlobalSettingsView: React.FC = () => {
                                 />
                             </button>
                         </div>
-                        <div className="flex items-center justify-between p-3 bg-secondary/30 rounded border border-border/50">
-                            <div>
-                                <div className="font-medium text-sm">Auto-Healing</div>
-                                <p className="text-xs text-muted-foreground mt-0.5">
-                                    Automatically detect and fix common server issues (EULA, Port conflicts, etc).
-                                </p>
-                            </div>
-                            <button
-                                onClick={toggleAutoHealing}
-                                className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
-                                    settings.app.autoHealing ? 'bg-primary' : 'bg-input'
-                                }`}
-                            >
-                                <span
-                                    className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-background shadow ring-0 transition duration-200 ease-in-out ${
-                                        settings.app.autoHealing ? 'translate-x-5' : 'translate-x-0'
+                        <div className="p-3 bg-secondary/30 rounded border border-border/50">
+                            <div className="flex items-center justify-between">
+                                <div>
+                                    <div className="font-medium text-sm">Auto-Healing</div>
+                                    <p className="text-xs text-muted-foreground mt-0.5">
+                                        Detect and fix common server issues.
+                                    </p>
+                                </div>
+                                <button
+                                    onClick={toggleAutoHealing}
+                                    className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none ${
+                                        settings.app.autoHealing ? 'bg-primary' : 'bg-input'
                                     }`}
-                                />
-                            </button>
+                                >
+                                    <span
+                                        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-background shadow ring-0 transition duration-200 ease-in-out ${
+                                            settings.app.autoHealing ? 'translate-x-5' : 'translate-x-0'
+                                        }`}
+                                    />
+                                </button>
+                            </div>
+
+                            {/* Sentinel UI removed - automatic optimization active */}
                         </div>
 
                         <div className="pt-2 border-t border-border/50 mt-2">

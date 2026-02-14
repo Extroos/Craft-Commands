@@ -72,22 +72,55 @@ export const DiagnosisCard: React.FC<DiagnosisCardProps> = ({ result, serverId, 
                             <span className={`text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded border ${severityColor}/30 ${severityBg} ${severityText}`}>
                                 {result.severity} DIAGNOSIS
                             </span>
+                            {result.isRootCause && (
+                                <span className="text-[10px] font-bold tracking-widest uppercase px-2 py-0.5 rounded bg-emerald-500 text-white shadow-sm ring-1 ring-emerald-500/20">
+                                    Root Cause
+                                </span>
+                            )}
                             <span className="text-[10px] font-mono text-muted-foreground bg-muted px-2 py-0.5 rounded tracking-tight">
                                 ID: {result.ruleId?.toUpperCase()}
                             </span>
                         </div>
                         
-                        {result.action?.autoHeal && (
-                            <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold rounded border border-emerald-500/20 uppercase tracking-tighter">
-                                <Zap size={10} className="fill-emerald-500" />
-                                Proactive Auto-Healing Available
-                            </div>
-                        )}
+                        <div className="flex items-center gap-4">
+                            {result.action?.autoHeal && (
+                                <div className="flex items-center gap-1.5 px-2 py-0.5 bg-emerald-500/10 text-emerald-500 text-[10px] font-bold rounded border border-emerald-500/20 uppercase tracking-tighter shadow-sm">
+                                    <Zap size={10} className="fill-emerald-500" />
+                                    Auto-Healing Capable
+                                </div>
+                            )}
+
+                            {result.confidence !== undefined && (
+                                <div className="flex items-center gap-3">
+                                    <span className="text-[10px] font-bold text-muted-foreground uppercase opacity-60">Confidence</span>
+                                    <div className="w-24 h-1.5 bg-muted rounded-full overflow-hidden">
+                                        <div 
+                                            className={`h-full transition-all duration-1000 ${result.confidence > 80 ? 'bg-emerald-500' : result.confidence > 50 ? 'bg-amber-500' : 'bg-rose-500'}`}
+                                            style={{ width: `${result.confidence}%` }}
+                                        />
+                                    </div>
+                                    <span className="text-[10px] font-mono font-bold text-foreground w-8">{result.confidence}%</span>
+                                </div>
+                            )}
+                        </div>
                     </div>
 
-                    <h3 className="text-lg font-bold text-foreground mb-3 flex items-center gap-2">
+                    <h3 className="text-lg font-bold text-foreground mb-1 flex items-center gap-2">
                          {result.title}
                     </h3>
+
+                    {result.suppressedBy && result.suppressedBy.length > 0 && (
+                        <div className="mb-3 flex items-center gap-2">
+                             <span className="text-[10px] font-bold text-muted-foreground/50 uppercase tracking-tighter">Suppressed By Deep Causes</span>
+                             <div className="flex items-center gap-1">
+                                {result.suppressedBy.map(sid => (
+                                    <span key={sid} className="text-[9px] font-mono px-1.5 py-0.5 bg-muted/50 text-muted-foreground rounded border border-border/50 uppercase">
+                                        {sid}
+                                    </span>
+                                ))}
+                             </div>
+                        </div>
+                    )}
                     
                     <div className="space-y-4">
                         <div className="text-sm text-muted-foreground leading-relaxed max-w-2xl">

@@ -323,18 +323,6 @@ const BackupManager: React.FC<BackupManagerProps> = ({ serverId }) => {
                     </div>
                 </div>
 
-                {/* Info Box */}
-                <div className="bg-gradient-to-br from-blue-900/10 to-indigo-900/10 border border-blue-500/10 rounded-xl p-5">
-                    <div className="flex gap-3">
-                        <Cloud className="text-blue-400 shrink-0" size={20} />
-                        <div>
-                            <h3 className="font-medium text-blue-400 text-sm mb-1">Offsite Backup</h3>
-                            <p className="text-xs text-blue-300/60 leading-relaxed">
-                                Connect your S3 or Google Drive account in <span className="underline cursor-pointer hover:text-blue-300">Settings</span> to automatically mirror your snapshots to the cloud for redundancy.
-                            </p>
-                        </div>
-                    </div>
-                </div>
 
                 {/* Automation Card */}
                 <div className="bg-card border border-border rounded-xl p-6 shadow-sm">
